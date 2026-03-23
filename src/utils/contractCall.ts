@@ -1,91 +1,443 @@
-import { type Abi } from 'viem';
-
-// Placeholder implementation for Phase 1-3
-// Will implement proper PAPI contract calls in later phases
-
-export async function callContract<T = any>(
-  address: string,
-  abi: Abi,
-  functionName: string,
-  args: any[] = []
-): Promise<T> {
-  console.log(`Mock call: ${functionName} to ${address}`, args);
-  
-  // Return mock data for common calls
-  if (functionName === 'addr') {
-    return '0x1234567890123456789012345678901234567890' as T;
-  }
-  if (functionName === 'reverseResolve') {
-    return 'test' as T;
-  }
-  
-  return null as T;
-}
+import { encodeFunctionData, decodeFunctionResult } from 'viem';
+import { Binary } from 'polkadot-api';
+import { getTypedApi } from './papiClient';
+import { getCurrentConnection } from './wallet';
+import { ensureAccountMapped } from './accountMapping';
 
 export interface TxResult {
   txHash: string;
   confirmation: Promise<{ confirmed: boolean; error?: string }>;
 }
 
+const DEPLOYER_SS58 = "5FbmtGERRp4MhuwojmA2XGWghZ7XSNBLCUKQCrTVRz8bVGrU";
+
+export async function callContract<T = any>(
+  contractAddress: string,
+  abi: any[],
+  functionName: string,
+  args: any[] = []
+): Promise<T> {
+  const data = encodeFunctionData({ abi, functionName, args });
+  const typedApi = getTypedApi();
+
+  const callResult = await typedApi.apis.ReviveApi.call(
+    DEPLOYER_SS58,
+    Binary.fromHex(contractAddress),
+    0n,
+    undefined,
+    undefined,
+    Binary.fromHex(data)
+  );
+
+  const inner = callResult.result;
+  let returnBytes: Uint8Array | string | null = null;
+
+  if (inner && typeof inner === 'object' && 'success' in inner) {
+    if (inner.success && inner.value?.data) {
+      const d = inner.value.data;
+      if (d instanceof Uint8Array) returnBytes = d;
+      else if (d && typeof (d as any).asBytes === 'function') returnBytes = (d as any).asBytes();
+      else if (d && typeof (d as any).asHex === 'function') returnBytes = (d as any).asHex();
+      else returnBytes = d as any;
+    } else if (!inner.success) {
+      throw new Error(`Contract call reverted for ${functionName}: ${JSON.stringify(inner)}`);
+    }
+  }
+
+  if (!returnBytes && inner && typeof inner === 'object') {
+    if ('Ok' in inner && (inner as any).Ok?.data) {
+      returnBytes = (inner as any).Ok.data;
+    } else if ('Err' in inner) {
+      throw new Error(`Contract call error for ${functionName}: ${JSON.stringify((inner as any).Err)}`);
+    }
+  }
+
+  if (!returnBytes && (callResult as any)?.data) {
+    returnBytes = (callResult as any).data;
+  }
+
+  if (!returnBytes) {
+    throw new Error(`No return data from ${functionName}. Raw: ${JSON.stringify(callResult).slice(0, 300)}`);
+  }
+
+  let hex: `0x${string}`;
+  if (returnBytes instanceof Uint8Array) {
+    hex = Binary.fromBytes(returnBytes).asHex() as `0x${string}`;
+  } else if (typeof returnBytes === 'string') {
+    hex = (returnBytes.startsWith('0x') ? returnBytes : '0x' + returnBytes) as `0x${string}`;
+  } else if (returnBytes && typeof (returnBytes as any).asHex === 'function') {
+    hex = (returnBytes as any).asHex() as `0x${string}`;
+  } else if (returnBytes && typeof (returnBytes as any).toHex === 'function') {
+    hex = (returnBytes as any).toHex() as `0x${string}`;
+  } else {
+    throw new Error(`Cannot convert return data to hex for ${functionName}`);
+  }
+
+  return decodeFunctionResult({ abi, functionName, data: hex }) as T;
+}
+
 export async function writeContract(
-  address: string,
-  abi: Abi,
+  contractAddress: string,
+  abi: any[],
   functionName: string,
   args: any[],
-  signer: any,
+  _signer: any,
   value: bigint = 0n,
-  verifyOnChain: boolean = true
+  verifyOnChain?: () => Promise<boolean>
 ): Promise<TxResult> {
-  console.log(`Mock write: ${functionName} to ${address}`, args, value);
-  
-  // Simulate wallet popup delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Generate realistic mock transaction hash
-  const mockTxHash = '0x' + Array.from({length: 64}, () => 
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('');
-  
-  const confirmation = new Promise<{ confirmed: boolean; error?: string }>(async (resolve) => {
-    if (!verifyOnChain) {
-      resolve({ confirmed: true });
-      return;
+  let connection = getCurrentConnection();
+  if (!connection) {
+    try {
+      const { useWalletStore } = await import('../stores/walletStore');
+      const { walletName } = useWalletStore.getState();
+      if (walletName) {
+        const { connectSubstrateWallet } = await import('./wallet');
+        const walletId = walletName === 'talisman' ? 'talisman' : 'subwallet-js';
+        await connectSubstrateWallet(walletId);
+        connection = getCurrentConnection();
+      }
+    } catch {}
+    if (!connection) {
+      throw new Error('Wallet not connected. Please disconnect and reconnect your wallet.');
     }
+  }
+
+  try {
+    await ensureAccountMapped(connection.address);
+  } catch (mapErr: any) {
+    const msg = mapErr?.message ?? '';
+    if (msg.includes('CannotLookup') || msg.includes('METADATA_HASH_ERROR')) {
+      throw new Error(
+        'CheckMetadataHash error: disable this in Talisman → Settings → Networks & Tokens → QF Network → uncheck metadata hash verification. Then reconnect.'
+      );
+    }
+    throw new Error('Account mapping failed. Please disconnect and reconnect your wallet.');
+  }
+
+  const data = encodeFunctionData({ abi, functionName, args });
+  const typedApi = getTypedApi();
+
+  let gasLimit = { ref_time: 100_000_000_000n, proof_size: 5_000_000n };
+  let storageDeposit = 0n;
+
+  try {
+    const dryRun = await typedApi.apis.ReviveApi.call(
+      connection.address,
+      Binary.fromHex(contractAddress),
+      value,
+      undefined,
+      undefined,
+      Binary.fromHex(data)
+    );
+    const d = dryRun as any;
+    if (d.gas_required) {
+      gasLimit = {
+        ref_time: (d.gas_required.ref_time * 150n) / 100n,
+        proof_size: (d.gas_required.proof_size * 150n) / 100n,
+      };
+    }
+    if (d.storage_deposit?.value) storageDeposit = d.storage_deposit.value;
+  } catch {}
+
+  const maxAttempts = 2;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (attempt > 1) {
+      try {
+        const retryDryRun = await typedApi.apis.ReviveApi.call(
+          connection.address,
+          Binary.fromHex(contractAddress),
+          value,
+          undefined,
+          undefined,
+          Binary.fromHex(data)
+        );
+        const rd = retryDryRun as any;
+        if (rd.gas_required) {
+          gasLimit = {
+            ref_time: rd.gas_required.ref_time * 2n,
+            proof_size: rd.gas_required.proof_size * 2n,
+          };
+        }
+        if (rd.storage_deposit?.value) storageDeposit = rd.storage_deposit.value;
+      } catch {}
+    }
+
+    const tx = typedApi.tx.Revive.call({
+      dest: Binary.fromHex(contractAddress),
+      value,
+      gas_limit: gasLimit,
+      storage_deposit_limit: storageDeposit,
+      data: Binary.fromHex(data),
+    });
 
     try {
-      // Simulate blockchain confirmation delay (5-15 seconds)
-      const confirmationDelay = 5000 + Math.random() * 10000;
-      
-      setTimeout(() => {
-        // 90% chance of success, 10% chance of timeout/failure for realism
-        if (Math.random() < 0.9) {
-          resolve({ confirmed: true });
-        } else {
-          resolve({ confirmed: false, error: 'Transaction confirmation timeout' });
-        }
-      }, confirmationDelay);
-      
-    } catch (error) {
-      resolve({ confirmed: false, error: error instanceof Error ? error.message : 'Unknown error' });
-    }
-  });
+      const result = await new Promise<TxResult>((resolveResult, rejectResult) => {
+        let broadcastReceived = false;
+        let confirmationResolve: (v: { confirmed: boolean; error?: string }) => void;
+        const confirmationPromise = new Promise<{ confirmed: boolean; error?: string }>((res) => {
+          confirmationResolve = res;
+        });
 
-  return { txHash: mockTxHash, confirmation };
+        const signingTimeout = setTimeout(() => {
+          if (!broadcastReceived) {
+            rejectResult(new Error('Transaction signing timed out. Please try again.'));
+          }
+        }, 30_000);
+
+        let confirmationTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        const subscription = tx.signSubmitAndWatch(connection.signer.polkadotSigner, {
+          at: 'best' as const,
+        }).subscribe({
+          next(ev: any) {
+            if (ev.type === 'broadcasted') {
+              broadcastReceived = true;
+              clearTimeout(signingTimeout);
+              resolveResult({ txHash: ev.txHash, confirmation: confirmationPromise });
+
+              confirmationTimeout = setTimeout(async () => {
+                if (verifyOnChain) {
+                  try {
+                    const onChain = await verifyOnChain();
+                    resolveConfirmation({ confirmed: onChain, error: onChain ? undefined : 'not_confirmed' });
+                  } catch {
+                    resolveConfirmation({ confirmed: false, error: 'verification_failed' });
+                  }
+                } else {
+                  resolveConfirmation({ confirmed: false, error: 'not_confirmed' });
+                }
+              }, 30_000);
+              return;
+            }
+
+            if (ev.type === 'txBestBlocksState' && ev.found) {
+              if (confirmationTimeout) clearTimeout(confirmationTimeout);
+              if (ev.ok) {
+                resolveConfirmation({ confirmed: true });
+              } else {
+                const errType = ev.dispatchError?.type ?? 'Transaction reverted';
+                resolveConfirmation({ confirmed: false, error: errType });
+              }
+              return;
+            }
+
+            if (ev.type === 'finalized') {
+              if (confirmationTimeout) clearTimeout(confirmationTimeout);
+              if (ev.ok) {
+                resolveConfirmation({ confirmed: true });
+              } else {
+                resolveConfirmation({ confirmed: false, error: ev.dispatchError?.type ?? 'Transaction reverted' });
+              }
+              return;
+            }
+          },
+          error(err: any) {
+            if (!broadcastReceived) {
+              clearTimeout(signingTimeout);
+              try { subscription.unsubscribe(); } catch {}
+              rejectResult(err);
+            } else {
+              if (confirmationTimeout) clearTimeout(confirmationTimeout);
+              resolveConfirmation({ confirmed: false, error: err?.message || 'Subscription error' });
+            }
+          },
+        });
+
+        let confirmationResolved = false;
+        const resolveConfirmation = (v: { confirmed: boolean; error?: string }) => {
+          if (confirmationResolved) return;
+          confirmationResolved = true;
+          confirmationResolve(v);
+          setTimeout(() => {
+            try { subscription.unsubscribe(); } catch {}
+          }, 100);
+        };
+      });
+
+      return result;
+    } catch (err: any) {
+      const msg = err?.message ?? '';
+
+      if (msg.includes('Cancelled') || msg.includes('Rejected') || msg.includes('cancelled') || msg.includes('rejected')) {
+        throw new Error('Transaction rejected by user');
+      }
+      if (msg.includes('CannotLookup')) {
+        throw new Error(
+          'CheckMetadataHash error: disable this in Talisman → Settings → Networks & Tokens → QF Network → uncheck metadata hash verification.'
+        );
+      }
+
+      const isRetriable = msg.includes('BadProof') || msg.includes('OutOfGas') || msg.includes('reverted');
+      if (isRetriable && attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, 1000));
+        continue;
+      }
+
+      throw new Error(`Transaction failed: ${msg}`);
+    }
+  }
+
+  throw new Error('Transaction failed after retry');
 }
 
 export async function sendTransfer(
   toEvmAddress: string,
   amount: bigint,
-  signerAddress: string,
-  verifyOnChain: boolean = true
+  _signerAddress: string,
+  verifyOnChain?: () => Promise<boolean>
 ): Promise<TxResult> {
-  console.log(`Mock transfer: ${amount} to ${toEvmAddress}`);
-  
-  const mockTxHash = '0x' + Array.from({length: 64}, () => 
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('');
-  
-  const confirmation = Promise.resolve({ confirmed: true });
-  
-  return { txHash: mockTxHash, confirmation };
+  let connection = getCurrentConnection();
+  if (!connection) {
+    try {
+      const { useWalletStore } = await import('../stores/walletStore');
+      const { walletName } = useWalletStore.getState();
+      if (walletName) {
+        const { connectSubstrateWallet } = await import('./wallet');
+        const walletId = walletName === 'talisman' ? 'talisman' : 'subwallet-js';
+        await connectSubstrateWallet(walletId);
+        connection = getCurrentConnection();
+      }
+    } catch {}
+    if (!connection) {
+      throw new Error('Wallet not connected. Please disconnect and reconnect your wallet.');
+    }
+  }
+
+  try {
+    await ensureAccountMapped(connection.address);
+  } catch (mapErr: any) {
+    const msg = mapErr?.message ?? '';
+    if (msg.includes('CannotLookup') || msg.includes('METADATA_HASH_ERROR')) {
+      throw new Error(
+        'CheckMetadataHash error: disable this in Talisman → Settings → Networks & Tokens → QF Network → uncheck metadata hash verification. Then reconnect.'
+      );
+    }
+    throw new Error('Account mapping failed. Please disconnect and reconnect your wallet.');
+  }
+
+  const typedApi = getTypedApi();
+
+  let gasLimit = { ref_time: 1_000_000_000n, proof_size: 100_000n };
+  let storageDeposit = 0n;
+
+  try {
+    const dryRun = await typedApi.apis.ReviveApi.call(
+      connection.address,
+      Binary.fromHex(toEvmAddress),
+      amount,
+      undefined,
+      undefined,
+      Binary.fromHex('0x')
+    );
+    const d = dryRun as any;
+    if (d.gas_required) {
+      gasLimit = {
+        ref_time: (d.gas_required.ref_time * 150n) / 100n,
+        proof_size: (d.gas_required.proof_size * 150n) / 100n,
+      };
+    }
+    if (d.storage_deposit?.value) storageDeposit = d.storage_deposit.value;
+  } catch {}
+
+  const tx = typedApi.tx.Revive.call({
+    dest: Binary.fromHex(toEvmAddress),
+    value: amount,
+    gas_limit: gasLimit,
+    storage_deposit_limit: storageDeposit,
+    data: Binary.fromHex('0x'),
+  });
+
+  try {
+    const result = await new Promise<TxResult>((resolveResult, rejectResult) => {
+      let broadcastReceived = false;
+      let confirmationResolve: (v: { confirmed: boolean; error?: string }) => void;
+      const confirmationPromise = new Promise<{ confirmed: boolean; error?: string }>((res) => {
+        confirmationResolve = res;
+      });
+
+      const signingTimeout = setTimeout(() => {
+        if (!broadcastReceived) {
+          rejectResult(new Error('Transfer signing timed out.'));
+        }
+      }, 30_000);
+
+      let confirmationTimeout: ReturnType<typeof setTimeout> | null = null;
+
+      const subscription = tx.signSubmitAndWatch(connection.signer.polkadotSigner, {
+        at: 'best' as const,
+      }).subscribe({
+        next(ev: any) {
+          if (ev.type === 'broadcasted') {
+            broadcastReceived = true;
+            clearTimeout(signingTimeout);
+            resolveResult({ txHash: ev.txHash, confirmation: confirmationPromise });
+
+            confirmationTimeout = setTimeout(async () => {
+              if (verifyOnChain) {
+                try {
+                  const onChain = await verifyOnChain();
+                  resolveConfirmation({ confirmed: onChain, error: onChain ? undefined : 'not_confirmed' });
+                } catch {
+                  resolveConfirmation({ confirmed: false, error: 'verification_failed' });
+                }
+              } else {
+                resolveConfirmation({ confirmed: false, error: 'not_confirmed' });
+              }
+            }, 30_000);
+            return;
+          }
+
+          if (ev.type === 'txBestBlocksState' && ev.found) {
+            if (confirmationTimeout) clearTimeout(confirmationTimeout);
+            if (ev.ok) {
+              resolveConfirmation({ confirmed: true });
+            } else {
+              const errType = ev.dispatchError?.type ?? 'Transfer reverted';
+              resolveConfirmation({ confirmed: false, error: errType });
+            }
+            return;
+          }
+
+          if (ev.type === 'finalized') {
+            if (confirmationTimeout) clearTimeout(confirmationTimeout);
+            if (ev.ok) {
+              resolveConfirmation({ confirmed: true });
+            } else {
+              resolveConfirmation({ confirmed: false, error: ev.dispatchError?.type ?? 'Transfer reverted' });
+            }
+            return;
+          }
+        },
+        error(err: any) {
+          if (!broadcastReceived) {
+            clearTimeout(signingTimeout);
+            try { subscription.unsubscribe(); } catch {}
+            rejectResult(err);
+          } else {
+            if (confirmationTimeout) clearTimeout(confirmationTimeout);
+            resolveConfirmation({ confirmed: false, error: err?.message || 'Subscription error' });
+          }
+        },
+      });
+
+      let confirmationResolved = false;
+      const resolveConfirmation = (v: { confirmed: boolean; error?: string }) => {
+        if (confirmationResolved) return;
+        confirmationResolved = true;
+        confirmationResolve(v);
+        setTimeout(() => {
+          try { subscription.unsubscribe(); } catch {}
+        }, 100);
+      };
+    });
+
+    return result;
+  } catch (err: any) {
+    const msg = err?.message ?? '';
+    if (msg.includes('Cancelled') || msg.includes('Rejected')) {
+      throw new Error('Transaction rejected by user');
+    }
+    throw new Error(`Transfer failed: ${msg}`);
+  }
 }

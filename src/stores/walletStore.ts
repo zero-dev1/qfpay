@@ -1,159 +1,232 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { connectSubstrateWallet, disconnectWallet, detectWalletExtensions } from '../utils/wallet';
-import { ensureAccountMapped } from '../utils/accountMapping';
-import { resolveReverse } from '../utils/qfpay';
+import { persist } from 'zustand/middleware';
+import { truncateAddress, resolveReverse } from '../utils/qfpay';
+import { ensureAccountMapped, METADATA_HASH_ERROR, USER_CANCELLED } from '../utils/accountMapping';
+import {
+  connectSubstrateWallet,
+  disconnectWallet,
+  type WalletConnection,
+} from '../utils/wallet';
 
 interface WalletState {
-  // Connection state
-  address: string | null;
+  address: `0x${string}` | null;
   ss58Address: string | null;
   qnsName: string | null;
   displayName: string | null;
-  walletName: string | null;
-  signer: any; // PAPI signer
   connecting: boolean;
+  walletConnection: WalletConnection | null;
+  walletName: string | null;
   accountMapped: boolean;
   showWalletModal: boolean;
   walletError: string | null;
+  _rehydrating: boolean;
 
-  // Actions
-  connect: (walletName: string) => Promise<void>;
-  connectWallet: (walletName: string) => Promise<void>;
+  connect: () => Promise<void>;
+  connectWallet: (walletType: 'talisman' | 'subwallet') => Promise<void>;
   disconnect: () => void;
+  refreshName: () => Promise<void>;
   setShowWalletModal: (show: boolean) => void;
-  setWalletError: (error: string | null) => void;
   clearWalletError: () => void;
-  rehydrate: () => Promise<void>;
-  getSigner: () => any;
 }
-
-const initialState = {
-  address: null,
-  ss58Address: null,
-  qnsName: null,
-  displayName: null,
-  walletName: null,
-  signer: null,
-  connecting: false,
-  accountMapped: false,
-  showWalletModal: false,
-  walletError: null,
-};
 
 export const useWalletStore = create<WalletState>()(
   persist(
     (set, get) => ({
-      ...initialState,
+      address: null,
+      ss58Address: null,
+      qnsName: null,
+      displayName: null,
+      connecting: false,
+      walletConnection: null,
+      walletName: null,
+      accountMapped: false,
+      showWalletModal: false,
+      walletError: null,
+      _rehydrating: false,
 
-      connect: async (walletName: string) => {
-        set({ connecting: true, walletError: null });
-        
-        try {
-          const connection = await connectSubstrateWallet(walletName);
-          
-          // Ensure account is mapped
-          const mapped = await ensureAccountMapped(connection.ss58Address);
-          
-          // Try to resolve reverse name
-          let qnsName: string | null = null;
-          try {
-            qnsName = await resolveReverse(connection.address);
-          } catch {
-            // Name resolution failed, that's okay
+      connect: async () => {
+        set({ showWalletModal: true });
+      },
+
+      connectWallet: async (walletType: 'talisman' | 'subwallet') => {
+        const isRehydrating = get()._rehydrating;
+        const setError = (error: string) => {
+          if (!isRehydrating) {
+            set({ walletError: error });
           }
+        };
+        
+        set({ connecting: true, walletError: null });
 
-          // Store signer for contract calls
-          // For now, we'll use the SS58 address as a placeholder signer
-          // In a full implementation, this would be the actual PAPI signer
-          const signer = connection.ss58Address;
+        try {
+          const walletName = walletType === 'talisman' ? 'talisman' : 'subwallet-js';
+          const connection = await Promise.race([
+            connectSubstrateWallet(walletName),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Wallet connection timed out after 10 seconds.')), 10_000)
+            ),
+          ]);
+
+          set({ walletConnection: connection });
+
+          const evmAddr = connection.evmAddress as `0x${string}`;
+          const ss58Addr = connection.address;
 
           set({
-            address: connection.address,
-            ss58Address: connection.ss58Address,
-            qnsName,
-            displayName: qnsName || connection.address,
-            walletName: connection.walletName,
-            signer,
-            accountMapped: mapped,
-            connecting: false,
-            showWalletModal: false,
-            walletError: null,
+            address: evmAddr,
+            ss58Address: ss58Addr,
+            displayName: truncateAddress(ss58Addr),
+            walletName: walletType,
           });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Connection failed';
+
+          // Resolve QNS name in background
+          resolveReverse(evmAddr).then(name => {
+            if (name) set({ qnsName: name, displayName: name });
+          }).catch(() => {});
+
+          // Map account
+          try {
+            await ensureAccountMapped(ss58Addr);
+            set({ accountMapped: true, showWalletModal: false });
+          } catch (mapErr: any) {
+            const msg = mapErr?.message ?? '';
+
+            if (msg === METADATA_HASH_ERROR || msg.includes('METADATA_HASH_ERROR')) {
+              setError(
+                'QF Network requires CheckMetadataHash to be disabled. ' +
+                'In Talisman: Settings → Networks & Tokens → Manage Networks → QF Network → uncheck metadata hash verification. Then reconnect.',
+              );
+              set({ accountMapped: false });
+              return;
+            }
+
+            if (msg === USER_CANCELLED || msg.includes('USER_CANCELLED')) {
+              set({ accountMapped: false, showWalletModal: false });
+              return;
+            }
+
+            disconnectWallet();
+            setError('Account setup incomplete — please try connecting again.');
+            set({
+              accountMapped: false,
+              address: null,
+              ss58Address: null,
+              qnsName: null,
+              displayName: null,
+              walletConnection: null,
+              walletName: null,
+            });
+            return;
+          }
+        } catch (error: any) {
+          const msg = error.message || '';
+          if (msg.includes('No accounts found') || msg.includes('no accounts')) {
+            setError('No accounts found. Please create an account in your wallet extension.');
+          } else if (msg.includes('extension') || msg.includes('not installed') || msg.includes('Cannot read properties')) {
+            setError('Please install Talisman or SubWallet to use this dApp.');
+          } else if (msg.includes('timed out')) {
+            setError(msg);
+          } else {
+            setError(msg || 'Failed to connect wallet');
+          }
+          disconnectWallet();
           set({
-            connecting: false,
-            walletError: message,
+            address: null,
+            ss58Address: null,
+            qnsName: null,
+            displayName: null,
+            walletConnection: null,
+            walletName: null,
+            accountMapped: false,
           });
+        } finally {
+          set({ connecting: false });
         }
       },
 
-      connectWallet: async (walletName: string) => {
-        const extensions = detectWalletExtensions();
-        
-        if (walletName === 'talisman' && !extensions.talisman) {
-          set({ walletError: 'Talisman wallet not found. Please install Talisman extension.' });
-          return;
-        }
-        
-        if (walletName === 'subwallet' && !extensions.subwallet) {
-          set({ walletError: 'SubWallet not found. Please install SubWallet extension.' });
-          return;
-        }
-
-        await get().connect(walletName);
+      disconnect: () => {
+        disconnectWallet();
+        set({
+          address: null,
+          ss58Address: null,
+          qnsName: null,
+          displayName: null,
+          walletConnection: null,
+          walletName: null,
+          accountMapped: false,
+          showWalletModal: false,
+          walletError: null,
+          connecting: false,
+          _rehydrating: false,
+        });
       },
 
-      disconnect: async () => {
-        await disconnectWallet();
-        set(initialState);
+      refreshName: async () => {
+        const { address } = get();
+        if (!address) return;
+        try {
+          const name = await resolveReverse(address);
+          if (name) {
+            set({ qnsName: name, displayName: name });
+          } else {
+            const { ss58Address } = get();
+            set({
+              qnsName: null,
+              displayName: ss58Address ? truncateAddress(ss58Address) : truncateAddress(address),
+            });
+          }
+        } catch {
+          const { ss58Address } = get();
+          set({
+            qnsName: null,
+            displayName: ss58Address ? truncateAddress(ss58Address) : truncateAddress(address),
+          });
+        }
       },
 
       setShowWalletModal: (show: boolean) => {
         set({ showWalletModal: show, walletError: null });
       },
 
-      setWalletError: (error: string | null) => {
-        set({ walletError: error });
-      },
-
       clearWalletError: () => {
         set({ walletError: null });
-      },
-
-      rehydrate: async () => {
-        const state = get();
-        if (state.address && state.ss58Address) {
-          // Re-validate the connection
-          try {
-            const mapped = await ensureAccountMapped(state.ss58Address);
-            set({ accountMapped: mapped });
-          } catch {
-            // Failed to rehydrate, clear state
-            set(initialState);
-          }
-        }
-      },
-
-      getSigner: () => {
-        return get().signer;
       },
     }),
     {
       name: 'qfpay-wallet-storage',
-      storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: () => (state) => {
-        // Delayed retry for slow extension injection (SubWallet in-app browser)
-        setTimeout(() => {
-          state?.rehydrate();
-        }, 1500);
+      version: 1,
+      partialize: (state) => ({
+        address: state.address,
+        ss58Address: state.ss58Address,
+        qnsName: state.qnsName,
+        displayName: state.displayName,
+        walletName: state.walletName,
+        accountMapped: state.accountMapped,
+      }),
+      onRehydrateStorage: () => {
+        return (state) => {
+          if (state?.address && state?.walletName) {
+            const walletType = state.walletName as 'talisman' | 'subwallet';
+            useWalletStore.setState({ _rehydrating: true });
+            state.connectWallet(walletType).then(() => {
+              useWalletStore.setState({ _rehydrating: false });
+              if (!useWalletStore.getState().address) {
+                useWalletStore.setState({ _rehydrating: true });
+                setTimeout(() => {
+                  state.connectWallet(walletType).then(() => {
+                    useWalletStore.setState({ _rehydrating: false });
+                  }).catch(() => {
+                    useWalletStore.setState({ _rehydrating: false });
+                  });
+                }, 1500);
+              }
+            }).catch(() => {
+              useWalletStore.setState({ _rehydrating: false });
+              state.disconnect();
+            });
+          }
+        };
       },
     }
   )
 );
-
-// Rehydration on app start
-if (typeof window !== 'undefined') {
-  useWalletStore.persist.rehydrate();
-}

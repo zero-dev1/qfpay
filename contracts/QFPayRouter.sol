@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 contract QFPayRouter {
-    address public immutable burnAddress;
+    address public burnAddress;
     uint256 public burnBasisPoints;
     address public admin;
     

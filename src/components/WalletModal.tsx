@@ -1,19 +1,19 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useWalletStore } from '../stores/walletStore';
-import { detectWalletExtensions } from '../utils/wallet';
+import { getAvailableWallets } from '../utils/wallet';
 
 export const WalletModal = () => {
+  const available = getAvailableWallets();
+
   const { 
     showWalletModal, 
     setShowWalletModal, 
     connecting, 
     walletError, 
     connectWallet,
-    setWalletError 
+    clearWalletError 
   } = useWalletStore();
-
-  const extensions = detectWalletExtensions();
 
   const backdropVariants = {
     hidden: { opacity: 0 },
@@ -43,7 +43,7 @@ export const WalletModal = () => {
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       setShowWalletModal(false);
-      setWalletError(null);
+      clearWalletError();
     }
   };
 
@@ -75,7 +75,8 @@ export const WalletModal = () => {
                 className="text-qfpay-secondary hover:text-white transition-colors"
                 onClick={() => {
                   setShowWalletModal(false);
-                  setWalletError(null);
+                  setShowWalletModal(false);
+      clearWalletError();
                 }}
               >
                 <X size={20} />
@@ -92,10 +93,10 @@ export const WalletModal = () => {
               <button
                 className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => handleWalletClick('talisman')}
-                disabled={connecting || !extensions.talisman}
+                disabled={connecting || !available.includes('talisman')}
               >
                 <span className="font-satoshi text-white">Talisman</span>
-                {!extensions.talisman && (
+                {!available.includes('talisman') && (
                   <span className="text-qfpay-secondary text-sm">Not installed</span>
                 )}
               </button>
@@ -103,16 +104,16 @@ export const WalletModal = () => {
               <button
                 className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => handleWalletClick('subwallet')}
-                disabled={connecting || !extensions.subwallet}
+                disabled={connecting || !available.includes('subwallet-js')}
               >
                 <span className="font-satoshi text-white">SubWallet</span>
-                {!extensions.subwallet && (
+                {!available.includes('subwallet-js') && (
                   <span className="text-qfpay-secondary text-sm">Not installed</span>
                 )}
               </button>
             </div>
 
-            {!extensions.talisman && !extensions.subwallet && (
+            {available.length === 0 && (
               <div className="mt-4 p-3 bg-qfpay-warning/10 border border-qfpay-warning/20 rounded-lg">
                 <p className="text-qfpay-warning text-sm">
                   No wallet extensions detected. Please install Talisman or SubWallet, or open this page in their in-app browser.

@@ -1,54 +1,90 @@
-import { keccak256 } from 'viem';
+import { getInjectedExtensions, connectInjectedExtension } from "polkadot-api/pjs-signer";
+import type { InjectedExtension, InjectedPolkadotAccount } from "polkadot-api/pjs-signer";
+import { keccak256 } from "viem";
+import { getSs58AddressInfo } from "polkadot-api";
+import { getTypedApi as getApi } from "./papiClient";
+
+export { getApi };
+
+export const WALLET_MODE: "substrate" | "evm" | "both" = "substrate";
 
 export interface WalletConnection {
   address: string;
-  ss58Address: string;
+  evmAddress: string;
+  name?: string;
   walletName: string;
+  signer: InjectedPolkadotAccount;
+  extension: InjectedExtension;
 }
 
-export async function connectSubstrateWallet(walletName: string): Promise<WalletConnection> {
-  try {
-    // Placeholder implementation for Phase 1
-    // Will implement proper PAPI wallet connection later
-    console.log(`Connecting to ${walletName}`);
-    
-    // Mock connection for now
-    const mockAddress = '0x1234567890123456789012345678901234567890';
-    const mockSs58Address = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
-    
-    return {
-      address: mockAddress,
-      ss58Address: mockSs58Address,
-      walletName,
-    };
-  } catch (error) {
-    console.error('Wallet connection error:', error);
-    throw error;
-  }
-}
-
-export function deriveEVMAddress(publicKey: Uint8Array): string {
-  const pubKeyHex = '0x' + Array.from(publicKey).map(b => b.toString(16).padStart(2, '0')).join('');
+export function deriveEVMAddress(ss58Address: string): string {
+  const info = getSs58AddressInfo(ss58Address);
+  if (!info.isValid) throw new Error('Invalid SS58 address');
+  const pubKeyHex = '0x' + Array.from(info.publicKey).map(b => b.toString(16).padStart(2, '0')).join('');
   const hash = keccak256(pubKeyHex as `0x${string}`);
   return '0x' + hash.slice(-40);
 }
 
-export async function getCurrentConnection(): Promise<WalletConnection | null> {
-  // Placeholder - will implement with store
-  return null;
+export async function getOnChainEvmAddress(ss58Address: string): Promise<string> {
+  const typedApi = getApi();
+  const result = await typedApi.apis.ReviveApi.address(ss58Address);
+  const hex = result instanceof Uint8Array 
+    ? '0x' + Array.from(result).map(b => b.toString(16).padStart(2, '0')).join('')
+    : typeof result === 'string' 
+      ? result 
+      : result?.asHex?.() ?? '';
+  return hex.toLowerCase();
 }
 
-export async function disconnectWallet(): Promise<void> {
-  console.log('Wallet disconnected');
+let currentConnection: WalletConnection | null = null;
+
+export function getAvailableWallets(): string[] {
+  return getInjectedExtensions();
 }
 
-export function detectWalletExtensions(): { talisman: boolean; subwallet: boolean } {
-  if (typeof window === 'undefined') {
-    return { talisman: false, subwallet: false };
+export async function connectSubstrateWallet(
+  walletName: string
+): Promise<WalletConnection> {
+  const extension = await connectInjectedExtension(walletName);
+  const accounts = extension.getAccounts();
+
+  if (accounts.length === 0) {
+    extension.disconnect();
+    throw new Error(`No accounts found in ${walletName}. Please create or import an account.`);
   }
+
+  const account = accounts[0];
   
-  return {
-    talisman: !!(window as any).talismanEth,
-    subwallet: !!(window as any).subwallet,
+  let evmAddress: string;
+  try {
+    evmAddress = deriveEVMAddress(account.address);
+  } catch (error) {
+    try {
+      evmAddress = await getOnChainEvmAddress(account.address);
+    } catch {
+      throw new Error('Could not derive EVM address for account.');
+    }
+  }
+
+  currentConnection = {
+    address: account.address,
+    evmAddress,
+    name: account.name ?? undefined,
+    walletName,
+    signer: account,
+    extension,
   };
+
+  return currentConnection;
+}
+
+export function getCurrentConnection(): WalletConnection | null {
+  return currentConnection;
+}
+
+export function disconnectWallet(): void {
+  if (currentConnection?.extension) {
+    currentConnection.extension.disconnect();
+  }
+  currentConnection = null;
 }

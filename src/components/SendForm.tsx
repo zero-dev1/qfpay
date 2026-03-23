@@ -72,16 +72,14 @@ export const SendForm = () => {
       }
 
       // Check for self-send
-      if (resolvedAddress && ss58Address) {
-        // For now, we'll use a simple comparison - in Phase 3 we'll get the actual wallet EVM address
-        if (resolvedAddress === '0x1234567890123456789012345678901234567890') {
-          setSelfSendError(true);
-          setResolutionError('Cannot send to yourself');
-          resolvedAddress = null;
-          resolvedName = null;
-        } else {
-          setSelfSendError(false);
-        }
+      const { address: senderAddress } = useWalletStore.getState();
+      if (senderAddress && resolvedAddress && resolvedAddress.toLowerCase() === senderAddress.toLowerCase()) {
+        setSelfSendError(true);
+        setResolutionError('Cannot send to yourself');
+        resolvedAddress = null;
+        resolvedName = null;
+      } else {
+        setSelfSendError(false);
       }
 
       setRecipient(resolvedName, resolvedAddress);
