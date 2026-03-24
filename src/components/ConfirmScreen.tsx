@@ -114,7 +114,7 @@ export const ConfirmScreen = () => {
       </motion.p>
 
       <motion.p
-        className="text-white/25 text-3xl mb-6"
+        className="text-white/60 text-3xl mb-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
@@ -123,7 +123,7 @@ export const ConfirmScreen = () => {
       </motion.p>
 
       <motion.p
-        className="font-clash font-semibold text-2xl sm:text-3xl text-qfpay-green mb-10"
+        className="font-clash font-semibold text-2xl sm:text-3xl text-white mb-10"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35, duration: 0.4 }}
@@ -138,12 +138,12 @@ export const ConfirmScreen = () => {
         transition={{ delay: 0.45 }}
       >
         <p className="text-center text-sm">
-          <span className="text-white/30">Burn: </span>
-          <span className="text-red-300 font-mono">{formatQF(burnAmountWei)} QF</span>
+          <span className="text-white/50">Burn: </span>
+          <span className="text-white/70 font-mono">{formatQF(burnAmountWei)} QF</span>
         </p>
         <p className="text-center text-sm">
-          <span className="text-white/30">Total cost: </span>
-          <span className="text-white/50 font-mono">{formatQF(totalRequiredWei)} QF</span>
+          <span className="text-white/50">Total cost: </span>
+          <span className="text-white/80 font-mono">{formatQF(totalRequiredWei)} QF</span>
         </p>
       </motion.div>
 

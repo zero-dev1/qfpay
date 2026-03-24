@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { usePaymentStore } from '../stores/paymentStore';
 import { formatQF } from '../utils/qfpay';
 import { EmberParticles } from './EmberParticles';
+import { playBurnSound, playSendSound, playSuccessSound } from '../utils/sounds';
 
 export const AnimationSequence = () => {
   const {
@@ -23,6 +24,19 @@ export const AnimationSequence = () => {
       ? recipientAddress.slice(0, 8) + '...' + recipientAddress.slice(-4)
       : '';
 
+  // Play sounds on phase entry
+  useEffect(() => {
+    if (phase === 'burn') {
+      playBurnSound();
+    }
+    if (phase === 'sending') {
+      playSendSound();
+    }
+    if (phase === 'success') {
+      playSuccessSound();
+    }
+  }, [phase]);
+
   // Auto-advance timers
   useEffect(() => {
     if (phase === 'burn') {
@@ -30,7 +44,7 @@ export const AnimationSequence = () => {
       return () => clearTimeout(timer);
     }
     if (phase === 'sending') {
-      const timer = setTimeout(advanceToSuccess, 1500);
+      const timer = setTimeout(advanceToSuccess, 2500);
       return () => clearTimeout(timer);
     }
   }, [phase, advanceToSending, advanceToSuccess]);

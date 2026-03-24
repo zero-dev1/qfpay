@@ -212,7 +212,7 @@ export const RecipientScreen = () => {
                   )}
                   {!isResolving && resolved && (
                     <motion.div key="check" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-                      <Check className="w-7 h-7 text-qfpay-green" />
+                      <Check className="w-7 h-7 text-white" />
                     </motion.div>
                   )}
                   {!isResolving && error && (
@@ -242,7 +242,7 @@ export const RecipientScreen = () => {
           className="h-px mt-4 mx-auto"
           style={{ maxWidth: '80%' }}
           animate={{
-            backgroundColor: error ? '#E5484D' : resolved ? '#00D179' : 'rgba(255,255,255,0.15)',
+            backgroundColor: error ? '#E5484D' : resolved ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)',
           }}
           transition={{ duration: 0.3 }}
         />
@@ -261,7 +261,7 @@ export const RecipientScreen = () => {
           )}
           {resolved && recipientName && (
             <motion.p
-              className="text-center font-satoshi text-qfpay-green text-sm mt-3"
+              className="text-center font-satoshi text-white/80 text-sm mt-3"
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
