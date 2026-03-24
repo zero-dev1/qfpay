@@ -195,7 +195,11 @@ export const useWalletStore = create<WalletState>()(
     }),
     {
       name: 'qfpay-wallet-storage',
-      version: 1,
+      version: 2,
+      migrate: (_persistedState: any, version: number) => {
+        if (version < 2) return {} as any;
+        return _persistedState;
+      },
       partialize: (state) => ({
         address: state.address,
         ss58Address: state.ss58Address,
