@@ -39,8 +39,7 @@ function App() {
   return (
     <motion.div
       className="min-h-screen w-full relative overflow-hidden"
-      animate={getBackgroundStyle()}
-      transition={{ duration: 0.8, ease: 'easeInOut' }}
+      style={getBackgroundStyle()}
     >
       {/* Logout button — top right, always visible when connected */}
       <AnimatePresence>
