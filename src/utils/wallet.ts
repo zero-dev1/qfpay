@@ -50,7 +50,13 @@ export async function connectSubstrateWallet(
 
   if (accounts.length === 0) {
     extension.disconnect();
-    throw new Error(`No accounts found in ${walletName}. Please create or import an account.`);
+    throw new Error(
+      `No accounts authorized for this site in ${walletName}. ` +
+      `Open your ${walletName === 'talisman' ? 'Talisman' : 'SubWallet'} extension, ` +
+      `go to the connected apps / authorized sites settings, ` +
+      `find this site (${window.location.origin}), and authorize at least one account. ` +
+      `Then click Connect again.` 
+    );
   }
 
   const account = accounts[0];
