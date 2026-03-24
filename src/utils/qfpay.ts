@@ -111,3 +111,21 @@ export function calculateBurn(intendedAmount: bigint): { burnAmount: bigint; rec
   const totalRequired = intendedAmount + burnAmount; // Sender pays amount + burn
   return { burnAmount, recipientAmount, totalRequired };
 }
+
+// ─── QNS Text Records (avatar, etc.) ────────────────────────────────
+
+export async function getTextRecord(name: string, key: string): Promise<string | null> {
+  try {
+    const fullName = name.endsWith('.qf') ? name : `${name}.qf`;
+    const node = namehash(fullName);
+    const value = await callContract<string>(QNS_RESOLVER_ADDRESS, RESOLVER_ABI, 'text', [node, key]);
+    if (!value || value === '') return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+export async function getAvatar(name: string): Promise<string | null> {
+  return getTextRecord(name, 'avatar');
+}

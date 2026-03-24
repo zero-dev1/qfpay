@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 
 export type PaymentPhase =
-  | 'idle'           // form visible, no transaction in progress
-  | 'preview'        // showing confirmation preview
+  | 'idle'           // identity screen (post-connect)
+  | 'recipient'      // full-screen recipient input
+  | 'amount'         // full-screen amount input
+  | 'preview'        // confirmation screen
   | 'broadcasting'   // wallet popup open, waiting for signature
   | 'burn'           // animation phase A — burn
   | 'sending'        // animation phase B — send
@@ -11,21 +13,27 @@ export type PaymentPhase =
 
 export interface PaymentState {
   phase: PaymentPhase;
-  recipientName: string | null;       // e.g. "sam" (without .qf)
-  recipientAddress: string | null;    // resolved EVM address
-  amount: string;                     // display string e.g. "100"
-  amountWei: bigint;                  // parsed bigint
+  recipientName: string | null;
+  recipientAddress: string | null;
+  recipientAvatar: string | null;
+  amount: string;
+  amountWei: bigint;
   burnAmountWei: bigint;
   recipientAmountWei: bigint;
+  totalRequiredWei: bigint;
   txHash: string | null;
-  confirmed: boolean | null;          // null = pending, true = confirmed, false = failed/timeout
+  confirmed: boolean | null;
   confirmationError: string | null;
   error: string | null;
 
-  setRecipient: (name: string | null, address: string | null) => void;
-  setAmount: (amount: string, amountWei: bigint, burnWei: bigint, recipientWei: bigint) => void;
+  setRecipient: (name: string | null, address: string | null, avatar?: string | null) => void;
+  setAmount: (amount: string, amountWei: bigint, burnWei: bigint, recipientWei: bigint, totalWei: bigint) => void;
+  goToRecipient: () => void;
+  goToAmount: () => void;
   goToPreview: () => void;
-  goBackToForm: () => void;
+  goBackToRecipient: () => void;
+  goBackToAmount: () => void;
+  goBackToIdle: () => void;
   setBroadcasting: () => void;
   startAnimation: (txHash: string) => void;
   advanceToSending: () => void;
@@ -39,10 +47,12 @@ const initialState = {
   phase: 'idle' as PaymentPhase,
   recipientName: null,
   recipientAddress: null,
+  recipientAvatar: null,
   amount: '',
   amountWei: 0n,
   burnAmountWei: 0n,
   recipientAmountWei: 0n,
+  totalRequiredWei: 0n,
   txHash: null,
   confirmed: null,
   confirmationError: null,
@@ -52,14 +62,21 @@ const initialState = {
 export const usePaymentStore = create<PaymentState>()((set) => ({
   ...initialState,
 
-  setRecipient: (name, address) => set({ recipientName: name, recipientAddress: address }),
+  setRecipient: (name, address, avatar) => set({
+    recipientName: name,
+    recipientAddress: address,
+    recipientAvatar: avatar ?? null,
+  }),
 
-  setAmount: (amount, amountWei, burnWei, recipientWei) =>
-    set({ amount, amountWei, burnAmountWei: burnWei, recipientAmountWei: recipientWei }),
+  setAmount: (amount, amountWei, burnWei, recipientWei, totalWei) =>
+    set({ amount, amountWei, burnAmountWei: burnWei, recipientAmountWei: recipientWei, totalRequiredWei: totalWei }),
 
+  goToRecipient: () => set({ phase: 'recipient' }),
+  goToAmount: () => set({ phase: 'amount' }),
   goToPreview: () => set({ phase: 'preview' }),
-
-  goBackToForm: () => set({ phase: 'idle' }),
+  goBackToRecipient: () => set({ phase: 'recipient' }),
+  goBackToAmount: () => set({ phase: 'amount' }),
+  goBackToIdle: () => set({ phase: 'idle' }),
 
   setBroadcasting: () => set({ phase: 'broadcasting' }),
 

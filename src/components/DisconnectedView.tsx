@@ -4,53 +4,38 @@ import { useWalletStore } from '../stores/walletStore';
 export const DisconnectedView = () => {
   const { setShowWalletModal } = useWalletStore();
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.3,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: 'spring' as const,
-        stiffness: 100,
-        damping: 12,
-      },
-    },
-  };
-
   return (
     <motion.div
-      className="flex flex-col items-center justify-center min-h-screen px-4"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
+      className="flex flex-col items-center justify-center min-h-screen px-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, y: -30 }}
+      transition={{ duration: 0.5 }}
     >
-      <motion.div
-        className="text-center mb-8"
-        variants={itemVariants}
+      <motion.h1
+        className="font-clash font-bold text-6xl sm:text-7xl md:text-8xl text-white mb-4 tracking-tight"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.6 }}
       >
-        <h1 className="font-clash font-semibold text-6xl md:text-7xl text-white mb-4">
-          QFPay
-        </h1>
-        <p className="font-satoshi text-xl text-qfpay-secondary">
-          Instant money. Just a name.
-        </p>
-      </motion.div>
+        QFPay
+      </motion.h1>
+
+      <motion.p
+        className="font-satoshi text-lg sm:text-xl text-white/40 mb-12"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
+      >
+        Instant money. Just a name.
+      </motion.p>
 
       <motion.button
-        className="font-satoshi font-medium text-lg px-8 py-4 bg-qfpay-blue hover:bg-qfpay-blue-hover text-white rounded-xl transition-colors duration-200"
-        variants={itemVariants}
+        className="bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-12 py-4 rounded-2xl transition-colors"
         onClick={() => setShowWalletModal(true)}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.5 }}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >

@@ -12,5 +12,15 @@
     "inputs": [{ "name": "_addr", "type": "address" }],
     "outputs": [{ "name": "", "type": "string" }],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "text",
+    "inputs": [
+      { "name": "node", "type": "bytes32" },
+      { "name": "key", "type": "string" }
+    ],
+    "outputs": [{ "name": "", "type": "string" }],
+    "stateMutability": "view"
   }
 ]
