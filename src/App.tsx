@@ -36,12 +36,39 @@ function App() {
   const isAnimating = phase === 'burn' || phase === 'sending' || phase === 'success';
   const showLogout = !!address && !isAnimating;
 
+  // Determine which single screen to render and its key
+  const getScreen = (): { key: string; element: React.ReactNode } => {
+    if (!address) {
+      return { key: 'disconnected', element: <DisconnectedView /> };
+    }
+    switch (phase) {
+      case 'recipient':
+        return { key: 'recipient', element: <RecipientScreen /> };
+      case 'amount':
+        return { key: 'amount', element: <AmountScreen /> };
+      case 'preview':
+      case 'broadcasting':
+        return { key: 'confirm', element: <ConfirmScreen /> };
+      case 'burn':
+      case 'sending':
+      case 'success':
+        return { key: 'animation', element: <AnimationSequence /> };
+      case 'error':
+        return { key: 'error', element: <IdentityScreen /> };
+      case 'idle':
+      default:
+        return { key: 'identity', element: <IdentityScreen /> };
+    }
+  };
+
+  const { key, element } = getScreen();
+
   return (
     <motion.div
       className="min-h-screen w-full relative overflow-hidden"
       style={getBackgroundStyle()}
     >
-      {/* Logout button — top right, always visible when connected */}
+      {/* Logout button */}
       <AnimatePresence>
         {showLogout && (
           <motion.button
@@ -59,18 +86,15 @@ function App() {
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
-        {!address ? (
-          <DisconnectedView key="disconnected" />
-        ) : (
-          <>
-            {phase === 'idle' && <IdentityScreen key="identity" />}
-            {phase === 'recipient' && <RecipientScreen key="recipient" />}
-            {phase === 'amount' && <AmountScreen key="amount" />}
-            {(phase === 'preview' || phase === 'broadcasting') && <ConfirmScreen key="confirm" />}
-            {isAnimating && <AnimationSequence key="animation" />}
-            {phase === 'error' && <IdentityScreen key="error" />}
-          </>
-        )}
+        <motion.div
+          key={key}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {element}
+        </motion.div>
       </AnimatePresence>
 
       <WalletModal />

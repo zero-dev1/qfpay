@@ -23,6 +23,7 @@ export const AnimationSequence = () => {
       ? recipientAddress.slice(0, 8) + '...' + recipientAddress.slice(-4)
       : '';
 
+  // Auto-advance timers
   useEffect(() => {
     if (phase === 'burn') {
       const timer = setTimeout(advanceToSending, 2000);
@@ -37,6 +38,8 @@ export const AnimationSequence = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6">
       <AnimatePresence mode="wait">
+
+        {/* ── BURN PHASE ── */}
         {phase === 'burn' && (
           <motion.div
             key="burn"
@@ -47,7 +50,6 @@ export const AnimationSequence = () => {
             transition={{ duration: 0.6 }}
           >
             <EmberParticles />
-            {/* Text fades out and drifts upward — dissolve effect */}
             <motion.h1
               className="font-clash font-bold text-7xl sm:text-8xl md:text-9xl text-white mb-4 relative z-10"
               animate={{
@@ -61,9 +63,7 @@ export const AnimationSequence = () => {
             </motion.h1>
             <motion.p
               className="font-satoshi text-2xl text-white/60 relative z-10"
-              animate={{
-                opacity: [1, 1, 0],
-              }}
+              animate={{ opacity: [1, 1, 0] }}
               transition={{ duration: 2, times: [0, 0.6, 1] }}
             >
               burned
@@ -71,14 +71,45 @@ export const AnimationSequence = () => {
           </motion.div>
         )}
 
+        {/* ── SENDING PHASE ── */}
         {phase === 'sending' && (
           <motion.div
             key="sending"
             className="text-center"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.5 }}
+          >
+            <motion.h1
+              className="font-clash font-bold text-7xl sm:text-8xl md:text-9xl text-white mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+            >
+              {formatQF(recipientAmountWei)} QF
+            </motion.h1>
+            <motion.p
+              className="font-satoshi text-2xl text-white/80"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+            >
+              → {displayRecipient}
+            </motion.p>
+          </motion.div>
+        )}
+
+        {/* ── SUCCESS PHASE ── */}
+        {phase === 'success' && (
+          <motion.div
+            key="success"
+            className="text-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6 }}
           >
+            {/* Animated checkmark */}
             <motion.div
               className="mb-8"
               initial={{ scale: 0 }}
@@ -146,6 +177,7 @@ export const AnimationSequence = () => {
             </motion.p>
           </motion.div>
         )}
+
       </AnimatePresence>
     </div>
   );

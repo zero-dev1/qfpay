@@ -155,7 +155,6 @@ export const AmountScreen = () => {
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             >
               <ArrowRight className="w-10 h-10 text-white" />
-              <ArrowRight className="w-7 h-7 text-white" />
             </motion.div>
           </motion.button>
         )}
