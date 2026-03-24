@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useWalletStore } from '../stores/walletStore';
+import logoMark from '../assets/logo-mark.svg';
 
 export const DisconnectedView = () => {
   const { setShowWalletModal } = useWalletStore();
@@ -12,13 +13,23 @@ export const DisconnectedView = () => {
       exit={{ opacity: 0, y: -30 }}
       transition={{ duration: 0.5 }}
     >
+      {/* Logo mark */}
+      <motion.img
+        src={logoMark}
+        alt="QFPay"
+        className="w-16 h-16 mb-8"
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.05, duration: 0.5 }}
+      />
+
       <motion.h1
         className="font-clash font-bold text-6xl sm:text-7xl md:text-8xl text-white mb-4 tracking-tight"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.6 }}
       >
-        QFPay
+        <span className="text-qfpay-blue">QF</span>Pay
       </motion.h1>
 
       <motion.p

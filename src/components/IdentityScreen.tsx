@@ -4,6 +4,7 @@ import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
 import { getQFBalance, formatQF, getAvatar, truncateAddress } from '../utils/qfpay';
 import { ArrowRight } from 'lucide-react';
+import logoMarkSvg from '../assets/logo-mark.svg';
 
 export const IdentityScreen = () => {
   const { qnsName, address, ss58Address } = useWalletStore();
@@ -114,7 +115,7 @@ export const IdentityScreen = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1, duration: 0.5 }}
           >
-            <span className="font-mono text-2xl text-white/30">?</span>
+            <img src={logoMarkSvg} alt="QFPay" className="w-10 h-10" />
           </motion.div>
 
           <motion.h2
