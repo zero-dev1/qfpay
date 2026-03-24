@@ -1,15 +1,17 @@
 [
   {
     "type": "constructor",
-    "inputs": [{ "name": "_burnAddress", "type": "address" }],
+    "inputs": [
+      { "name": "_burnAddress", "type": "address", "internalType": "address" }
+    ],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
     "name": "send",
     "inputs": [
-      { "name": "to", "type": "address" },
-      { "name": "intendedAmount", "type": "uint256" }
+      { "name": "to", "type": "address", "internalType": "address" },
+      { "name": "intendedAmount", "type": "uint256", "internalType": "uint256" }
     ],
     "outputs": [],
     "stateMutability": "payable"
@@ -18,41 +20,53 @@
     "type": "function",
     "name": "burnAddress",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "address" }],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "address" }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "burnBasisPoints",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "uint256" }],
+    "outputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "admin",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "address" }],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "address" }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "setBurnBasisPoints",
-    "inputs": [{ "name": "_bps", "type": "uint256" }],
+    "inputs": [
+      { "name": "_bps", "type": "uint256", "internalType": "uint256" }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
     "name": "setBurnAddress",
-    "inputs": [{ "name": "_addr", "type": "address" }],
+    "inputs": [
+      { "name": "_addr", "type": "address", "internalType": "address" }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
     "name": "setAdmin",
-    "inputs": [{ "name": "_newAdmin", "type": "address" }],
+    "inputs": [
+      { "name": "_newAdmin", "type": "address", "internalType": "address" }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -60,11 +74,12 @@
     "type": "event",
     "name": "Payment",
     "inputs": [
-      { "name": "from", "type": "address", "indexed": true },
-      { "name": "to", "type": "address", "indexed": true },
-      { "name": "intendedAmount", "type": "uint256", "indexed": false },
-      { "name": "burned", "type": "uint256", "indexed": false }
-    ]
+      { "name": "from", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "to", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "intendedAmount", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "burned", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
   },
   {
     "type": "receive",
