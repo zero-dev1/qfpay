@@ -15,20 +15,22 @@ function App() {
   const { address, disconnect } = useWalletStore();
   const { phase } = usePaymentStore();
 
-  const getBackgroundColor = () => {
-    if (phase === 'burn') return '#E85D25';
-    if (phase === 'sending') return '#00D179';
-    if (phase === 'success') return '#0052FF';
-    return '#0A0A0A';
-  };
-
   const getBackgroundStyle = (): React.CSSProperties => {
-    if (phase === 'burn') {
-      return {
-        background: 'linear-gradient(to top, #E85D25, #C13333, #0A0A0A)',
-      };
+    switch (phase) {
+      case 'burn':
+        return { background: 'linear-gradient(to top, #E85D25, #C13333, #0A0A0A)' };
+      case 'sending':
+        return { backgroundColor: '#00D179' };
+      case 'success':
+        return { backgroundColor: '#0052FF' };
+      case 'recipient':
+      case 'amount':
+      case 'preview':
+      case 'broadcasting':
+        return { backgroundColor: '#0052FF' };
+      default:
+        return { backgroundColor: '#0A0A0A' };
     }
-    return {};
   };
 
   const isAnimating = phase === 'burn' || phase === 'sending' || phase === 'success';
@@ -37,15 +39,14 @@ function App() {
   return (
     <motion.div
       className="min-h-screen w-full relative overflow-hidden"
-      style={getBackgroundStyle()}
-      animate={{ backgroundColor: getBackgroundColor() }}
+      animate={getBackgroundStyle()}
       transition={{ duration: 0.8, ease: 'easeInOut' }}
     >
       {/* Logout button — top right, always visible when connected */}
       <AnimatePresence>
         {showLogout && (
           <motion.button
-            className="fixed top-6 right-6 z-50 p-2.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+            className="fixed top-6 right-6 z-50 p-2.5 rounded-full hover:bg-white/10 transition-colors"
             onClick={disconnect}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

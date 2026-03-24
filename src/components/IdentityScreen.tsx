@@ -61,14 +61,15 @@ export const IdentityScreen = () => {
             )}
           </motion.div>
 
-          {/* Name */}
+          {/* Name — white name, blue .qf */}
           <motion.h1
-            className="font-clash font-bold text-5xl sm:text-6xl md:text-7xl text-white mb-3 tracking-tight"
+            className="font-clash font-bold text-5xl sm:text-6xl md:text-7xl tracking-tight mb-3"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
           >
-            {qnsName}.qf
+            <span className="text-white">{qnsName}</span>
+            <span className="text-qfpay-blue">.qf</span>
           </motion.h1>
 
           {/* Balance */}
@@ -81,7 +82,7 @@ export const IdentityScreen = () => {
             {formatQF(balance)} QF
           </motion.p>
 
-          {/* Get started arrow */}
+          {/* Arrow — no circle, just the icon */}
           <motion.button
             className="group"
             onClick={goToRecipient}
@@ -90,24 +91,17 @@ export const IdentityScreen = () => {
             transition={{ delay: 0.6, duration: 0.5 }}
           >
             <motion.div
-              className="w-16 h-16 rounded-full bg-qfpay-blue flex items-center justify-center"
               animate={{
-                scale: [1, 1.08, 1],
-                boxShadow: [
-                  '0 0 0 0 rgba(0, 82, 255, 0.4)',
-                  '0 0 0 12px rgba(0, 82, 255, 0)',
-                  '0 0 0 0 rgba(0, 82, 255, 0)',
-                ],
+                y: [0, 6, 0],
+                opacity: [0.6, 1, 0.6],
               }}
               transition={{
                 duration: 2,
                 repeat: Infinity,
                 ease: 'easeInOut',
               }}
-              whileHover={{ scale: 1.15 }}
-              whileTap={{ scale: 0.95 }}
             >
-              <ArrowRight className="w-7 h-7 text-white" />
+              <ArrowRight className="w-10 h-10 text-white" />
             </motion.div>
           </motion.button>
         </>

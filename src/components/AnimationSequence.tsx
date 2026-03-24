@@ -23,14 +23,13 @@ export const AnimationSequence = () => {
       ? recipientAddress.slice(0, 8) + '...' + recipientAddress.slice(-4)
       : '';
 
-  // Auto-advance with updated timing
   useEffect(() => {
     if (phase === 'burn') {
-      const timer = setTimeout(advanceToSending, 2000); // 2s for burn
+      const timer = setTimeout(advanceToSending, 2000);
       return () => clearTimeout(timer);
     }
     if (phase === 'sending') {
-      const timer = setTimeout(advanceToSuccess, 1500); // 1.5s for sending
+      const timer = setTimeout(advanceToSuccess, 1500);
       return () => clearTimeout(timer);
     }
   }, [phase, advanceToSending, advanceToSuccess]);
@@ -48,12 +47,27 @@ export const AnimationSequence = () => {
             transition={{ duration: 0.6 }}
           >
             <EmberParticles />
-            <h1 className="font-clash font-bold text-7xl sm:text-8xl md:text-9xl text-white mb-4 relative z-10">
+            {/* Text fades out and drifts upward — dissolve effect */}
+            <motion.h1
+              className="font-clash font-bold text-7xl sm:text-8xl md:text-9xl text-white mb-4 relative z-10"
+              animate={{
+                opacity: [1, 1, 0.3],
+                y: [0, 0, -15],
+                filter: ['blur(0px)', 'blur(0px)', 'blur(3px)'],
+              }}
+              transition={{ duration: 2, times: [0, 0.5, 1], ease: 'easeIn' }}
+            >
               {formatQF(burnAmountWei)} QF
-            </h1>
-            <p className="font-satoshi text-2xl text-white/60 relative z-10">
+            </motion.h1>
+            <motion.p
+              className="font-satoshi text-2xl text-white/60 relative z-10"
+              animate={{
+                opacity: [1, 1, 0],
+              }}
+              transition={{ duration: 2, times: [0, 0.6, 1] }}
+            >
               burned
-            </p>
+            </motion.p>
           </motion.div>
         )}
 
@@ -61,46 +75,17 @@ export const AnimationSequence = () => {
           <motion.div
             key="sending"
             className="text-center"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h1 className="font-clash font-bold text-7xl sm:text-8xl md:text-9xl text-white mb-4">
-              {formatQF(recipientAmountWei)} QF
-            </h1>
-            <motion.p
-              className="font-satoshi text-2xl text-white/80"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.4 }}
-            >
-              → {displayRecipient}
-            </motion.p>
-          </motion.div>
-        )}
-
-        {phase === 'success' && (
-          <motion.div
-            key="success"
-            className="text-center"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6 }}
           >
-            {/* Checkmark */}
             <motion.div
               className="mb-8"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
             >
-              <svg
-                className="w-20 h-20 mx-auto text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-20 h-20 mx-auto text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <motion.path
                   strokeLinecap="round"
                   strokeLinejoin="round"

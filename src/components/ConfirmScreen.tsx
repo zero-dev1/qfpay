@@ -36,8 +36,6 @@ export const ConfirmScreen = () => {
     setBroadcasting();
 
     try {
-      // New contract: send(address to, uint256 intendedAmount)
-      // msg.value = intendedAmount + burn = totalRequiredWei
       const { txHash, confirmation } = await writeContract(
         QFPAY_ROUTER_ADDRESS,
         ROUTER_ABI,
@@ -49,7 +47,12 @@ export const ConfirmScreen = () => {
 
       startAnimation(txHash);
 
+      const fallbackTimer = setTimeout(() => {
+        setConfirmation(true);
+      }, 3000);
+
       confirmation.then(({ confirmed, error }) => {
+        clearTimeout(fallbackTimer);
         setConfirmation(confirmed, error);
       });
     } catch (err: any) {
@@ -66,26 +69,25 @@ export const ConfirmScreen = () => {
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center min-h-screen px-6"
+      className="flex flex-col items-center justify-center min-h-screen bg-[#0052FF] px-6"
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.4 }}
     >
-      {/* Back button */}
       {!isBroadcasting && (
         <motion.button
-          className="fixed top-6 left-6 z-50 p-2.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+          className="fixed top-6 left-6 z-50 p-2.5 rounded-full hover:bg-white/10 transition-colors"
           onClick={goBackToAmount}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <ArrowLeft className="w-5 h-5 text-white/40 hover:text-white/70" />
+          <ArrowLeft className="w-5 h-5 text-white/50 hover:text-white" />
         </motion.button>
       )}
 
       <motion.p
-        className="font-satoshi text-white/30 text-sm uppercase tracking-widest mb-8"
+        className="font-satoshi text-white/40 text-sm uppercase tracking-widest mb-8"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -93,7 +95,6 @@ export const ConfirmScreen = () => {
         Confirm Payment
       </motion.p>
 
-      {/* Big amount */}
       <motion.h1
         className="font-clash font-bold text-7xl sm:text-8xl md:text-9xl text-white mb-2"
         initial={{ opacity: 0, y: 20 }}
@@ -104,7 +105,7 @@ export const ConfirmScreen = () => {
       </motion.h1>
 
       <motion.p
-        className="font-clash text-2xl text-white/30 mb-6"
+        className="font-clash text-2xl text-white/40 mb-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.25 }}
@@ -112,9 +113,8 @@ export const ConfirmScreen = () => {
         QF
       </motion.p>
 
-      {/* Arrow */}
       <motion.p
-        className="text-white/20 text-3xl mb-6"
+        className="text-white/25 text-3xl mb-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
@@ -122,7 +122,6 @@ export const ConfirmScreen = () => {
         ↓
       </motion.p>
 
-      {/* Recipient */}
       <motion.p
         className="font-clash font-semibold text-2xl sm:text-3xl text-qfpay-green mb-10"
         initial={{ opacity: 0, y: 10 }}
@@ -132,7 +131,6 @@ export const ConfirmScreen = () => {
         {displayRecipient}
       </motion.p>
 
-      {/* Breakdown */}
       <motion.div
         className="space-y-1.5 mb-12"
         initial={{ opacity: 0 }}
@@ -141,7 +139,7 @@ export const ConfirmScreen = () => {
       >
         <p className="text-center text-sm">
           <span className="text-white/30">Burn: </span>
-          <span className="text-qfpay-burn font-mono">{formatQF(burnAmountWei)} QF</span>
+          <span className="text-red-300 font-mono">{formatQF(burnAmountWei)} QF</span>
         </p>
         <p className="text-center text-sm">
           <span className="text-white/30">Total cost: </span>
@@ -149,16 +147,13 @@ export const ConfirmScreen = () => {
         </p>
       </motion.div>
 
-      {/* Confirm button */}
       <motion.button
-        className="bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-16 py-4 rounded-2xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+        className="bg-white text-[#0052FF] font-satoshi font-semibold text-lg px-16 py-4 rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 hover:bg-white/90"
         onClick={handleConfirm}
         disabled={isBroadcasting}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.55, duration: 0.4 }}
-        whileHover={!isBroadcasting ? { scale: 1.02 } : {}}
-        whileTap={!isBroadcasting ? { scale: 0.98 } : {}}
       >
         {isBroadcasting ? (
           <>
