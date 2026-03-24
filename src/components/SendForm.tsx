@@ -15,7 +15,7 @@ import { GAS_BUFFER, QFPAY_ROUTER_ADDRESS } from '../config/contracts';
 import { truncateAddress } from '../utils/qfpay';
 
 export const SendForm = () => {
-  const { displayName, ss58Address, disconnect } = useWalletStore();
+  const { displayName, ss58Address, address, disconnect } = useWalletStore();
   const { 
     recipientName, 
     recipientAddress, 
@@ -24,7 +24,6 @@ export const SendForm = () => {
     goToPreview 
   } = usePaymentStore();
 
-  // Form state
   const [recipientInput, setRecipientInput] = useState('');
   const [amountInput, setAmountInput] = useState('');
   const [balance, setBalance] = useState<bigint>(0n);
@@ -32,10 +31,8 @@ export const SendForm = () => {
   const [resolutionError, setResolutionError] = useState<string | null>(null);
   const [selfSendError, setSelfSendError] = useState(false);
 
-  // Router deployment check
   const routerNotDeployed = QFPAY_ROUTER_ADDRESS === '0x0000000000000000000000000000000000000000';
 
-  // Debounced resolution
   const resolveRecipient = useCallback(async (input: string) => {
     if (!input.trim()) {
       setRecipient(null, null);
@@ -61,20 +58,16 @@ export const SendForm = () => {
             setResolutionError('Name not found');
           }
           break;
-
         case 'evm-address':
           resolvedAddress = input;
           break;
-
         case 'ss58-address':
           resolvedAddress = ss58ToEvmAddress(input);
           break;
-
         default:
           setResolutionError('Invalid address format');
       }
 
-      // Check for self-send
       const { address: senderAddress } = useWalletStore.getState();
       if (senderAddress && resolvedAddress && resolvedAddress.toLowerCase() === senderAddress.toLowerCase()) {
         setSelfSendError(true);
@@ -94,27 +87,22 @@ export const SendForm = () => {
     }
   }, [ss58Address, setRecipient]);
 
-  // Debounced effect
   useEffect(() => {
     const timer = setTimeout(() => {
       resolveRecipient(recipientInput);
     }, 400);
-
     return () => clearTimeout(timer);
   }, [recipientInput, resolveRecipient]);
 
-  // Fetch balance on mount
   useEffect(() => {
     if (ss58Address) {
       getQFBalance(ss58Address).then(setBalance);
     }
   }, [ss58Address]);
 
-  // Calculate burn and recipient amounts
   const amountWei = amountInput ? parseQFAmount(amountInput) : 0n;
   const { burnAmount, recipientAmount } = calculateBurn(amountWei);
 
-  // Validation
   const isFormValid = 
     recipientAddress && 
     amountWei > 0n && 
@@ -123,6 +111,8 @@ export const SendForm = () => {
     !routerNotDeployed &&
     amountWei + GAS_BUFFER <= balance;
 
+  const displayRecipientName = recipientName ? `${recipientName}.qf` : null;
+
   return (
     <motion.div
       className="flex flex-col items-center justify-center min-h-screen px-4"
@@ -130,105 +120,93 @@ export const SendForm = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="bg-qfpay-card rounded-2xl border border-white/5 p-8 w-full max-w-md">
-        {/* Sender Info */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="text-qfpay-secondary text-sm mb-1">From</p>
-            <p className="font-satoshi text-white">
-              {displayName || 'Unknown'}
-            </p>
+      <div className="bg-qfpay-card rounded-2xl border border-white/5 p-6 sm:p-8 w-full max-w-md">
+        {/* Header: avatar + name + balance */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-qfpay-blue/30 flex items-center justify-center">
+              <span className="text-qfpay-blue font-clash font-semibold text-sm">
+                {(displayName || '?')[0].toUpperCase()}
+              </span>
+            </div>
+            <span className="font-satoshi text-white font-medium">
+              {displayName || truncateAddress(address || '')}
+            </span>
           </div>
-          <button
-            className="text-qfpay-secondary hover:text-white transition-colors text-sm"
-            onClick={disconnect}
-          >
-            Disconnect
-          </button>
+          <span className="font-mono text-white text-sm">
+            {formatQF(balance)} QF
+          </span>
         </div>
 
-        {/* Balance */}
+        {/* TO field */}
         <div className="mb-6">
-          <p className="text-qfpay-secondary text-sm mb-1">Balance</p>
-          <p className="font-satoshi text-white text-xl">
-            {formatQF(balance)} QF available
-          </p>
-        </div>
-
-        {/* Recipient Input */}
-        <div className="mb-4">
-          <label className="block text-qfpay-secondary text-sm mb-2">
-            Recipient
+          <label className="block text-qfpay-secondary text-xs uppercase tracking-wider mb-2">
+            To
           </label>
           <div className="relative">
             <input
               type="text"
-              placeholder="Enter .qf name or address"
+              placeholder="name.qf or address"
               value={recipientInput}
               onChange={(e) => setRecipientInput(e.target.value)}
-              className={`w-full bg-white/5 border rounded-xl px-4 py-3 pr-10 text-white placeholder-qfpay-secondary focus:outline-none transition-colors ${
+              className={`w-full bg-white/5 border rounded-xl px-4 py-3.5 pr-10 text-white text-lg placeholder-white/30 focus:outline-none transition-colors ${
                 resolutionError 
                   ? 'border-qfpay-error' 
                   : recipientAddress 
-                    ? 'border-qfpay-green' 
-                    : 'border-white/10 focus:border-qfpay-blue'
+                    ? 'border-qfpay-green/50' 
+                    : 'border-white/10 focus:border-white/20'
               }`}
             />
-            
-            {/* Status indicator */}
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              {isResolving && (
-                <Loader2 className="w-4 h-4 text-qfpay-secondary animate-spin" />
-              )}
-              {!isResolving && recipientAddress && (
-                <Check className="w-4 h-4 text-qfpay-green" />
-              )}
-              {!isResolving && resolutionError && (
-                <X className="w-4 h-4 text-qfpay-error" />
-              )}
+              {isResolving && <Loader2 className="w-5 h-5 text-qfpay-secondary animate-spin" />}
+              {!isResolving && recipientAddress && <Check className="w-5 h-5 text-qfpay-green" />}
+              {!isResolving && resolutionError && <X className="w-5 h-5 text-qfpay-error" />}
             </div>
           </div>
-          
-          {/* Resolution feedback */}
           {recipientAddress && !resolutionError && (
-            <p className="text-xs text-qfpay-green mt-1">
-              {recipientName ? `${recipientName}.qf` : truncateAddress(recipientAddress)}
+            <p className="text-xs text-qfpay-green mt-1.5">
+              {displayRecipientName || truncateAddress(recipientAddress)}
             </p>
           )}
           {resolutionError && (
-            <p className="text-xs text-qfpay-error mt-1">{resolutionError}</p>
+            <p className="text-xs text-qfpay-error mt-1.5">{resolutionError}</p>
           )}
         </div>
 
-        {/* Amount Input */}
+        {/* AMOUNT field */}
         <div className="mb-4">
-          <label className="block text-qfpay-secondary text-sm mb-2">
+          <label className="block text-qfpay-secondary text-xs uppercase tracking-wider mb-2">
             Amount
           </label>
           <div className="relative">
             <input
               type="text"
-              placeholder="0.00"
+              inputMode="decimal"
+              placeholder="0"
               value={amountInput}
               onChange={(e) => {
                 if (isValidAmountInput(e.target.value)) {
                   setAmountInput(e.target.value);
                 }
               }}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-12 text-white placeholder-qfpay-secondary focus:outline-none focus:border-qfpay-blue transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 pr-14 text-white text-lg placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
             />
-            <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-qfpay-secondary">
+            <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/40 font-mono text-sm">
               QF
             </span>
           </div>
         </div>
 
-        {/* Quick Amount Buttons */}
+        {/* Quick amounts */}
         <div className="flex gap-2 mb-6">
           {[10, 50, 100, 500].map((amount) => (
             <button
               key={amount}
-              className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg py-2 text-qfpay-secondary hover:text-white transition-colors text-sm"
+              className={`flex-1 border rounded-lg py-2 text-sm transition-colors ${
+                amountInput === amount.toString()
+                  ? 'bg-white/10 border-white/20 text-white'
+                  : 'bg-transparent border-white/10 text-white/50 hover:text-white hover:border-white/20'
+              }`}
               onClick={() => setAmountInput(amount.toString())}
             >
               {amount}
@@ -236,21 +214,26 @@ export const SendForm = () => {
           ))}
         </div>
 
-        {/* Burn Preview */}
+        {/* Divider */}
+        <div className="border-t border-white/5 mb-4" />
+
+        {/* Burn + receives breakdown */}
         {amountWei > 0n && (
-          <div className="mb-6 p-3 bg-white/5 rounded-lg">
+          <div className="mb-6 space-y-1.5">
             <div className="flex justify-between text-sm">
-              <span className="text-qfpay-secondary">0.1% burn</span>
-              <span className="text-qfpay-burn">{formatQF(burnAmount)} QF</span>
+              <span className="text-white/40">0.1% burn:</span>
+              <span className="text-qfpay-burn font-mono">{formatQF(burnAmount)} QF</span>
             </div>
-            <div className="flex justify-between text-sm mt-1">
-              <span className="text-qfpay-secondary">Receives</span>
-              <span className="text-qfpay-green">{formatQF(recipientAmount)} QF</span>
+            <div className="flex justify-between text-sm">
+              <span className="text-white/40">
+                {displayRecipientName || 'Recipient'} receives:
+              </span>
+              <span className="text-qfpay-green font-mono">{formatQF(recipientAmount)} QF</span>
             </div>
           </div>
         )}
 
-        {/* Insufficient balance warning */}
+        {/* Warnings */}
         {amountWei > 0n && amountWei + GAS_BUFFER > balance && (
           <div className="mb-4 p-3 bg-qfpay-error/10 border border-qfpay-error/20 rounded-lg">
             <p className="text-qfpay-error text-sm">
@@ -259,7 +242,6 @@ export const SendForm = () => {
           </div>
         )}
 
-        {/* Router not deployed warning */}
         {routerNotDeployed && (
           <div className="mb-4 p-3 bg-qfpay-warning/10 border border-qfpay-warning/20 rounded-lg">
             <p className="text-qfpay-warning text-sm">
@@ -268,16 +250,16 @@ export const SendForm = () => {
           </div>
         )}
 
-        {/* Send Button */}
+        {/* Send button */}
         <button
-          className="w-full bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-medium py-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold py-4 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lg"
           disabled={!isFormValid}
           onClick={() => {
             setAmount(amountInput, amountWei, burnAmount, recipientAmount);
             goToPreview();
           }}
         >
-          Send
+          {amountWei > 0n && recipientAddress ? `Send ${formatQF(amountWei)} QF` : 'Send'}
         </button>
       </div>
     </motion.div>

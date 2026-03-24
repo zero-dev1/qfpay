@@ -191,6 +191,8 @@ export async function writeContract(
           at: 'best' as const,
         }).subscribe({
           next(ev: any) {
+            console.log('[writeContract] tx event:', ev.type, ev);
+
             if (ev.type === 'broadcasted') {
               broadcastReceived = true;
               clearTimeout(signingTimeout);
@@ -211,13 +213,15 @@ export async function writeContract(
               return;
             }
 
-            if (ev.type === 'txBestBlocksState' && ev.found) {
-              if (confirmationTimeout) clearTimeout(confirmationTimeout);
-              if (ev.ok) {
-                resolveConfirmation({ confirmed: true });
-              } else {
-                const errType = ev.dispatchError?.type ?? 'Transaction reverted';
-                resolveConfirmation({ confirmed: false, error: errType });
+            if (ev.type === 'txBestBlocksState') {
+              if (ev.found) {
+                if (confirmationTimeout) clearTimeout(confirmationTimeout);
+                if (ev.ok) {
+                  resolveConfirmation({ confirmed: true });
+                } else {
+                  const errType = ev.dispatchError?.type ?? 'Transaction reverted';
+                  resolveConfirmation({ confirmed: false, error: errType });
+                }
               }
               return;
             }
@@ -368,6 +372,8 @@ export async function sendTransfer(
         at: 'best' as const,
       }).subscribe({
         next(ev: any) {
+          console.log('[sendTransfer] tx event:', ev.type, ev);
+
           if (ev.type === 'broadcasted') {
             broadcastReceived = true;
             clearTimeout(signingTimeout);
