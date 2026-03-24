@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { getAvailableWallets } from '../utils/wallet';
 
 export const WalletModal = () => {
-  const available = getAvailableWallets();
+  const [available, setAvailable] = useState<string[]>([]);
 
   const { 
     showWalletModal, 
@@ -14,6 +15,15 @@ export const WalletModal = () => {
     connectWallet,
     clearWalletError 
   } = useWalletStore();
+
+  useEffect(() => {
+    const check = () => setAvailable(getAvailableWallets());
+    check();
+    // Re-check after 500ms and 1500ms for slow extension injection
+    const t1 = setTimeout(check, 500);
+    const t2 = setTimeout(check, 1500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [showWalletModal]);
 
   const backdropVariants = {
     hidden: { opacity: 0 },
@@ -75,8 +85,7 @@ export const WalletModal = () => {
                 className="text-qfpay-secondary hover:text-white transition-colors"
                 onClick={() => {
                   setShowWalletModal(false);
-                  setShowWalletModal(false);
-      clearWalletError();
+                  clearWalletError();
                 }}
               >
                 <X size={20} />

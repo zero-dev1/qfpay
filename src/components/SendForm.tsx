@@ -11,7 +11,7 @@ import {
 } from '../utils/qfpay';
 import { parseQFAmount, isValidAmountInput } from '../utils/parseAmount';
 import { detectAddressType, ss58ToEvmAddress } from '../utils/address';
-import { GAS_BUFFER } from '../config/contracts';
+import { GAS_BUFFER, QFPAY_ROUTER_ADDRESS } from '../config/contracts';
 import { truncateAddress } from '../utils/qfpay';
 
 export const SendForm = () => {
@@ -31,6 +31,9 @@ export const SendForm = () => {
   const [isResolving, setIsResolving] = useState(false);
   const [resolutionError, setResolutionError] = useState<string | null>(null);
   const [selfSendError, setSelfSendError] = useState(false);
+
+  // Router deployment check
+  const routerNotDeployed = QFPAY_ROUTER_ADDRESS === '0x0000000000000000000000000000000000000000';
 
   // Debounced resolution
   const resolveRecipient = useCallback(async (input: string) => {
@@ -117,6 +120,7 @@ export const SendForm = () => {
     amountWei > 0n && 
     !resolutionError && 
     !selfSendError &&
+    !routerNotDeployed &&
     amountWei + GAS_BUFFER <= balance;
 
   return (
@@ -251,6 +255,15 @@ export const SendForm = () => {
           <div className="mb-4 p-3 bg-qfpay-error/10 border border-qfpay-error/20 rounded-lg">
             <p className="text-qfpay-error text-sm">
               Insufficient balance. Need {formatQF(amountWei + GAS_BUFFER)} QF total.
+            </p>
+          </div>
+        )}
+
+        {/* Router not deployed warning */}
+        {routerNotDeployed && (
+          <div className="mb-4 p-3 bg-qfpay-warning/10 border border-qfpay-warning/20 rounded-lg">
+            <p className="text-qfpay-warning text-sm">
+              QFPay router contract not yet deployed. Sending is disabled.
             </p>
           </div>
         )}

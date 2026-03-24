@@ -9,7 +9,7 @@ import { isRetryableError, RETRY_MESSAGE_SHORT } from '../utils/errorHelpers';
 import { showToast } from './Toast';
 
 export const PreviewStep = () => {
-  const { ss58Address, getSigner } = useWalletStore();
+  const { ss58Address } = useWalletStore();
   const { 
     phase, 
     recipientName, 
@@ -35,15 +35,14 @@ export const PreviewStep = () => {
     setBroadcasting();
 
     try {
-      // Get signer from wallet store
-      const signer = getSigner();
+      // writeContract handles getting the signer internally
 
       const { txHash, confirmation } = await writeContract(
         QFPAY_ROUTER_ADDRESS,
         ROUTER_ABI,
         'send',
         [recipientAddress],
-        signer,
+        null,
         amountWei
       );
 
