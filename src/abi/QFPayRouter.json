@@ -7,7 +7,10 @@
   {
     "type": "function",
     "name": "send",
-    "inputs": [{ "name": "to", "type": "address" }],
+    "inputs": [
+      { "name": "to", "type": "address" },
+      { "name": "intendedAmount", "type": "uint256" }
+    ],
     "outputs": [],
     "stateMutability": "payable"
   },
@@ -35,21 +38,21 @@
   {
     "type": "function",
     "name": "setBurnBasisPoints",
-    "inputs": [{ "name": "newBps", "type": "uint256" }],
+    "inputs": [{ "name": "_bps", "type": "uint256" }],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
     "name": "setBurnAddress",
-    "inputs": [{ "name": "newBurn", "type": "address" }],
+    "inputs": [{ "name": "_addr", "type": "address" }],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
     "name": "setAdmin",
-    "inputs": [{ "name": "newAdmin", "type": "address" }],
+    "inputs": [{ "name": "_newAdmin", "type": "address" }],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -59,7 +62,7 @@
     "inputs": [
       { "name": "from", "type": "address", "indexed": true },
       { "name": "to", "type": "address", "indexed": true },
-      { "name": "amount", "type": "uint256", "indexed": false },
+      { "name": "intendedAmount", "type": "uint256", "indexed": false },
       { "name": "burned", "type": "uint256", "indexed": false }
     ]
   },

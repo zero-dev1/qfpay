@@ -101,7 +101,7 @@ export const SendForm = () => {
   }, [ss58Address]);
 
   const amountWei = amountInput ? parseQFAmount(amountInput) : 0n;
-  const { burnAmount, recipientAmount } = calculateBurn(amountWei);
+  const { burnAmount, recipientAmount, totalRequired } = calculateBurn(amountWei);
 
   const isFormValid = 
     recipientAddress && 
@@ -109,7 +109,7 @@ export const SendForm = () => {
     !resolutionError && 
     !selfSendError &&
     !routerNotDeployed &&
-    amountWei + GAS_BUFFER <= balance;
+    totalRequired + GAS_BUFFER <= balance;
 
   const displayRecipientName = recipientName ? `${recipientName}.qf` : null;
 
@@ -221,23 +221,27 @@ export const SendForm = () => {
         {amountWei > 0n && (
           <div className="mb-6 space-y-1.5">
             <div className="flex justify-between text-sm">
-              <span className="text-white/40">0.1% burn:</span>
-              <span className="text-qfpay-burn font-mono">{formatQF(burnAmount)} QF</span>
-            </div>
-            <div className="flex justify-between text-sm">
               <span className="text-white/40">
                 {displayRecipientName || 'Recipient'} receives:
               </span>
               <span className="text-qfpay-green font-mono">{formatQF(recipientAmount)} QF</span>
             </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-white/40">Burn (0.1%):</span>
+              <span className="text-qfpay-burn font-mono">{formatQF(burnAmount)} QF</span>
+            </div>
+            <div className="flex justify-between text-sm pt-2 border-t border-white/5">
+              <span className="text-white/60">Total to pay:</span>
+              <span className="text-white font-mono">{formatQF(totalRequired)} QF</span>
+            </div>
           </div>
         )}
 
         {/* Warnings */}
-        {amountWei > 0n && amountWei + GAS_BUFFER > balance && (
+        {amountWei > 0n && totalRequired + GAS_BUFFER > balance && (
           <div className="mb-4 p-3 bg-qfpay-error/10 border border-qfpay-error/20 rounded-lg">
             <p className="text-qfpay-error text-sm">
-              Insufficient balance. Need {formatQF(amountWei + GAS_BUFFER)} QF total.
+              Insufficient balance. Need {formatQF(totalRequired + GAS_BUFFER)} QF total (includes burn).
             </p>
           </div>
         )}
@@ -259,7 +263,7 @@ export const SendForm = () => {
             goToPreview();
           }}
         >
-          {amountWei > 0n && recipientAddress ? `Send ${formatQF(amountWei)} QF` : 'Send'}
+          {amountWei > 0n && recipientAddress ? `Send ${formatQF(totalRequired)} QF` : 'Send'}
         </button>
       </div>
     </motion.div>

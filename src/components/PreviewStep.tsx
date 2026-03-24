@@ -40,9 +40,9 @@ export const PreviewStep = () => {
         QFPAY_ROUTER_ADDRESS,
         ROUTER_ABI,
         'send',
-        [recipientAddress],
+        [recipientAddress, amountWei],
         null,
-        amountWei
+        amountWei + burnAmountWei
       );
 
       startAnimation(txHash);

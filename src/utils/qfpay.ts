@@ -105,8 +105,9 @@ export function truncateAddress(address: string): string {
 
 // ─── Burn calculation ────────────────────────────────────────────────
 
-export function calculateBurn(amount: bigint): { burnAmount: bigint; recipientAmount: bigint } {
-  const burnAmount = (amount * BURN_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
-  const recipientAmount = amount - burnAmount;
-  return { burnAmount, recipientAmount };
+export function calculateBurn(intendedAmount: bigint): { burnAmount: bigint; recipientAmount: bigint; totalRequired: bigint } {
+  const burnAmount = (intendedAmount * BURN_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+  const recipientAmount = intendedAmount; // Recipient gets exactly what they expect
+  const totalRequired = intendedAmount + burnAmount; // Sender pays amount + burn
+  return { burnAmount, recipientAmount, totalRequired };
 }
