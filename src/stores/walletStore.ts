@@ -5,6 +5,7 @@ import { ensureAccountMapped, METADATA_HASH_ERROR, USER_CANCELLED } from '../uti
 import {
   connectSubstrateWallet,
   disconnectWallet,
+  getAvailableWallets,
   type WalletConnection,
 } from '../utils/wallet';
 
@@ -207,23 +208,38 @@ export const useWalletStore = create<WalletState>()(
         return (state) => {
           if (state?.address && state?.walletName) {
             const walletType = state.walletName as 'talisman' | 'subwallet';
-            useWalletStore.setState({ _rehydrating: true });
-            state.connectWallet(walletType).then(() => {
-              useWalletStore.setState({ _rehydrating: false });
-              if (!useWalletStore.getState().address) {
-                useWalletStore.setState({ _rehydrating: true });
-                setTimeout(() => {
-                  state.connectWallet(walletType).then(() => {
-                    useWalletStore.setState({ _rehydrating: false });
-                  }).catch(() => {
-                    useWalletStore.setState({ _rehydrating: false });
-                  });
-                }, 1500);
+            const extensionId = walletType === 'talisman' ? 'talisman' : 'subwallet-js';
+            
+            const attemptRehydration = () => {
+              const available = getAvailableWallets();
+              if (!available.includes(extensionId)) {
+                return false;
               }
-            }).catch(() => {
-              useWalletStore.setState({ _rehydrating: false });
-              state.disconnect();
-            });
+              useWalletStore.setState({ _rehydrating: true });
+              state.connectWallet(walletType).then(() => {
+                useWalletStore.setState({ _rehydrating: false });
+              }).catch(() => {
+                useWalletStore.setState({ _rehydrating: false });
+                state.disconnect();
+              });
+              return true;
+            };
+            
+            if (!attemptRehydration()) {
+              setTimeout(() => {
+                if (!attemptRehydration()) {
+                  setTimeout(() => {
+                    if (!attemptRehydration()) {
+                      setTimeout(() => {
+                        if (!attemptRehydration()) {
+                          state.disconnect();
+                        }
+                      }, 1500);
+                    }
+                  }, 1000);
+                }
+              }, 500);
+            }
           }
         };
       },
