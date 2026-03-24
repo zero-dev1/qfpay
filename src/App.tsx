@@ -15,19 +15,20 @@ function App() {
   const { address, disconnect } = useWalletStore();
   const { phase } = usePaymentStore();
 
+  const getBackgroundColor = () => {
+    if (phase === 'burn') return '#E85D25';
+    if (phase === 'sending') return '#00D179';
+    if (phase === 'success') return '#0052FF';
+    return '#0A0A0A';
+  };
+
   const getBackgroundStyle = (): React.CSSProperties => {
     if (phase === 'burn') {
       return {
         background: 'linear-gradient(to top, #E85D25, #C13333, #0A0A0A)',
       };
     }
-    if (phase === 'sending') {
-      return { backgroundColor: '#00D179' };
-    }
-    if (phase === 'success') {
-      return { backgroundColor: '#0052FF' };
-    }
-    return { backgroundColor: '#0A0A0A' };
+    return {};
   };
 
   const isAnimating = phase === 'burn' || phase === 'sending' || phase === 'success';
@@ -36,7 +37,8 @@ function App() {
   return (
     <motion.div
       className="min-h-screen w-full relative overflow-hidden"
-      animate={getBackgroundStyle()}
+      style={getBackgroundStyle()}
+      animate={{ backgroundColor: getBackgroundColor() }}
       transition={{ duration: 0.8, ease: 'easeInOut' }}
     >
       {/* Logout button — top right, always visible when connected */}
