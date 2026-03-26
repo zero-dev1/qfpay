@@ -5,6 +5,7 @@ import { resolveForward, getAvatar } from '../utils/qfpay';
 import { detectAddressType, ss58ToEvmAddress } from '../utils/address';
 import { useWalletStore } from '../stores/walletStore';
 import { Loader2, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 
 const EXAMPLE_NAMES = ['memechi.qf', 'alice.qf', 'spin.qf', 'satoshi.qf', 'dev.qf'];
 const TYPE_SPEED = 80;
@@ -13,7 +14,14 @@ const PAUSE_AFTER_TYPE = 1500;
 const PAUSE_AFTER_DELETE = 300;
 
 export const RecipientScreen = () => {
-  const { setRecipient, goToAmount, goBackToIdle, recipientAddress, recipientName } = usePaymentStore();
+  const {
+    setRecipient,
+    goToAmount,
+    goBackToIdle,
+    recipientAddress,
+    recipientName,
+    recipientAvatar,
+  } = usePaymentStore();
   const { address: senderAddress } = useWalletStore();
 
   const [input, setInput] = useState('');
@@ -22,10 +30,16 @@ export const RecipientScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [placeholder, setPlaceholder] = useState('');
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-typing — runs when input is empty and not actively typing
+  // Reset avatar loaded state when recipient changes
+  useEffect(() => {
+    setAvatarLoaded(false);
+  }, [recipientName]);
+
+  // Auto-typing placeholder — unchanged logic, just runs when input is empty
   useEffect(() => {
     if (input) return;
 
@@ -69,7 +83,7 @@ export const RecipientScreen = () => {
     };
   }, [input]);
 
-  // Resolve input
+  // Resolve input — unchanged logic
   const resolveInput = useCallback(async (value: string) => {
     if (!value.trim()) {
       setRecipient(null, null);
@@ -157,16 +171,16 @@ export const RecipientScreen = () => {
       initial={{ opacity: 0, x: 60 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -60 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
+      transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
       onClick={handleScreenTap}
     >
       {/* Back button */}
       <motion.button
-        className="fixed top-6 left-6 z-50 p-2.5 rounded-full hover:bg-white/10 transition-colors"
+        className="fixed top-6 left-6 z-50 p-2.5 rounded-full hover:bg-white/10 transition-colors focus-ring"
         onClick={(e) => { e.stopPropagation(); goBackToIdle(); }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.2, ease: EASE_OUT_EXPO }}
       >
         <ArrowLeft className="w-5 h-5 text-white/50 hover:text-white" />
       </motion.button>
@@ -175,7 +189,7 @@ export const RecipientScreen = () => {
         className="font-satoshi text-white/40 text-sm uppercase tracking-widest mb-6"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ delay: 0.1, ease: EASE_OUT_EXPO }}
       >
         Send to
       </motion.p>
@@ -211,13 +225,13 @@ export const RecipientScreen = () => {
                     </motion.div>
                   )}
                   {!isResolving && resolved && (
-                    <motion.div key="check" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+                    <motion.div key="check" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} transition={EASE_SPRING}>
                       <Check className="w-7 h-7 text-white" />
                     </motion.div>
                   )}
                   {!isResolving && error && (
                     <motion.div key="error" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
-                      <X className="w-7 h-7 text-qfpay-error" />
+                      <X className="w-7 h-7 text-red-300" />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -244,54 +258,116 @@ export const RecipientScreen = () => {
           animate={{
             backgroundColor: error ? '#E5484D' : resolved ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)',
           }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
         />
 
-        {/* Feedback */}
+        {/* ── RESOLVED IDENTITY CARD ── */}
+        {/* This is the key new element — when a .qf name resolves, we show */}
+        {/* the avatar + name as a confirmed identity, not just text feedback */}
         <AnimatePresence>
-          {error && (
+          {resolved && recipientName && !error && (
+            <motion.div
+              className="flex items-center justify-center gap-3 mt-6"
+              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.95 }}
+              transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+            >
+              {/* Recipient avatar — THE product moment */}
+              <div className="relative">
+                {recipientAvatar ? (
+                  <motion.div
+                    className="w-10 h-10 rounded-full overflow-hidden border border-white/20"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{
+                      scale: avatarLoaded ? 1 : 0,
+                      opacity: avatarLoaded ? 1 : 0,
+                    }}
+                    transition={EASE_SPRING}
+                  >
+                    <img
+                      src={recipientAvatar}
+                      alt={recipientName}
+                      className="w-full h-full object-cover"
+                      onLoad={() => setAvatarLoaded(true)}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={EASE_SPRING}
+                  >
+                    <span className="font-clash font-semibold text-sm text-white">
+                      {recipientName[0].toUpperCase()}
+                    </span>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Resolved name with .qf badge */}
+              <motion.div
+                className="flex items-center gap-1.5"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1, duration: 0.3, ease: EASE_OUT_EXPO }}
+              >
+                <span className="font-satoshi font-medium text-white text-base">
+                  {recipientName}
+                </span>
+                <span className="font-satoshi text-white/50 text-base">.qf</span>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* Non-QNS address resolved — show truncated address */}
+          {resolved && !recipientName && recipientAddress && !error && (
             <motion.p
-              className="text-center font-satoshi text-qfpay-error text-sm mt-3"
+              className="text-center font-mono text-white/50 text-sm mt-4"
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
             >
-              {error}
+              {recipientAddress.slice(0, 10)}...{recipientAddress.slice(-6)}
             </motion.p>
           )}
-          {resolved && recipientName && (
+
+          {/* Error feedback */}
+          {error && (
             <motion.p
-              className="text-center font-satoshi text-white/80 text-sm mt-3"
+              key="error-msg"
+              className="text-center font-satoshi text-red-300 text-sm mt-4"
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.2 }}
             >
-              {recipientName}.qf
+              {error}
             </motion.p>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Continue arrow — plain, no circle */}
+      {/* Continue button — upgraded from bare arrow to pill */}
       <AnimatePresence>
         {canContinue && (
           <motion.button
-            className="mt-16"
-            onClick={(e) => { e.stopPropagation(); goToAmount(); }}
-            initial={{ opacity: 0, y: 20 }}
+            className="mt-14 flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 transition-all focus-ring"
+            onClick={(e) => {
+              e.stopPropagation();
+              goToAmount();
+            }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={EASE_SPRING}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <motion.div
-              animate={{
-                y: [0, 6, 0],
-                opacity: [0.6, 1, 0.6],
-              }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <ArrowRight className="w-10 h-10 text-white" />
-            </motion.div>
+            <span className="font-satoshi font-medium text-white text-base">Continue</span>
+            <ArrowRight className="w-4 h-4 text-white/70" />
           </motion.button>
         )}
       </AnimatePresence>
