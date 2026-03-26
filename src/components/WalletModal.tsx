@@ -5,17 +5,36 @@ import { useWalletStore } from '../stores/walletStore';
 import { EASE_OUT_EXPO, SCALE_IN } from '../lib/animations';
 
 // Inline SVG wallet icons — no external dependencies
+// Talisman — their hand/spirit mark on lime-green (#D5FF5C) background
 const TalismanIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <rect width="24" height="24" rx="6" fill="#D5FF5C" />
-    <path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 2.5a2 2 0 110 4 2 2 0 010-4zm0 9a5.5 5.5 0 01-4.39-2.19c.02-1.46 2.93-2.26 4.39-2.26s4.37.8 4.39 2.26A5.5 5.5 0 0112 16.5z" fill="#111" />
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="28" height="28" rx="8" fill="#D5FF5C" />
+    <path
+      d="M14 6.5c-1.1 0-2.1.3-3 .8-.5.3-.8.8-.8 1.4v2.6c0 .3.1.6.3.8.2.2.5.3.8.3h.4c.3 0 .5-.1.7-.3l.5-.5c.3-.3.7-.5 1.1-.5s.8.2 1.1.5l.5.5c.2.2.4.3.7.3h.4c.3 0 .6-.1.8-.3.2-.2.3-.5.3-.8V8.7c0-.6-.3-1.1-.8-1.4-.9-.5-1.9-.8-3-.8z"
+      fill="#111"
+    />
+    <path
+      d="M9.2 14.5c-.3 0-.5.1-.7.3l-1 1c-.4.4-.4 1 0 1.4l3.8 3.8c.6.6 1.3.9 2.1 1h1.2c.8-.1 1.5-.4 2.1-1l3.8-3.8c.4-.4.4-1 0-1.4l-1-1c-.2-.2-.4-.3-.7-.3h-.3c-.3 0-.5.1-.7.3L16 15.6c-.5.5-1.2.8-2 .8s-1.5-.3-2-0.8l-1.8-1.8c-.2-.2-.4-.3-.7-.3h-.3z"
+      fill="#111"
+    />
   </svg>
 );
 
+// SubWallet — their gradient shield/S mark
 const SubWalletIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <rect width="24" height="24" rx="6" fill="#004BFF" />
-    <path d="M7 8h10v2H7V8zm0 3h10v2H7v-2zm0 3h7v2H7v-2z" fill="white" />
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="28" height="28" rx="8" fill="url(#sw-grad)" />
+    <path
+      d="M9 10.5C9 9.67 9.67 9 10.5 9h7c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-4a2.5 2.5 0 000 5h4c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-7c-.83 0-1.5-.67-1.5-1.5v-1c0-.83.67-1.5 1.5-1.5h4a2.5 2.5 0 000-5h-4C9.67 13 9 12.33 9 11.5v-1z"
+      fill="white"
+      fillOpacity="0.95"
+    />
+    <defs>
+      <linearGradient id="sw-grad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#004BFF" />
+        <stop offset="1" stopColor="#38E08C" />
+      </linearGradient>
+    </defs>
   </svg>
 );
 
@@ -148,7 +167,7 @@ export const WalletModal = () => {
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                 >
-                  <div className="flex-shrink-0">{wallet.icon}</div>
+                  <div className="flex-shrink-0 w-7 h-7">{wallet.icon}</div>
                   <div className="text-left">
                     <p className="font-satoshi font-medium text-qfpay-text-primary text-sm">{wallet.name}</p>
                     <p className="font-satoshi text-xs text-qfpay-text-muted">{wallet.description}</p>

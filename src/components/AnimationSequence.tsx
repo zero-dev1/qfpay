@@ -1,11 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { usePaymentStore } from '../stores/paymentStore';
 import { useWalletStore } from '../stores/walletStore';
-import { formatQF, getAvatar } from '../utils/qfpay';
+import { formatQF } from '../utils/qfpay';
 import { EmberParticles } from './EmberParticles';
 import { playBurnSound, playSendSound, playSuccessSound } from '../utils/sounds';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export const AnimationSequence = () => {
   const {
@@ -21,17 +22,8 @@ export const AnimationSequence = () => {
     reset,
   } = usePaymentStore();
 
-  const { qnsName: senderName } = useWalletStore();
-
-  // Fetch sender avatar (not stored in walletStore, need to fetch)
-  const [senderAvatar, setSenderAvatar] = useState<string | null>(null);
-  useEffect(() => {
-    if (senderName) {
-      getAvatar(senderName).then((url) => {
-        if (url) setSenderAvatar(url);
-      });
-    }
-  }, [senderName]);
+  const { qnsName: senderName, avatarUrl: senderAvatar } = useWalletStore();
+  const reducedMotion = useReducedMotion();
 
   const displayRecipient = recipientName
     ? `${recipientName}.qf` 
@@ -43,10 +35,11 @@ export const AnimationSequence = () => {
 
   // Play sounds on phase entry
   useEffect(() => {
+    if (reducedMotion) return; // Skip sounds for reduced-motion users
     if (phase === 'burn') playBurnSound();
     if (phase === 'sending') playSendSound();
     if (phase === 'success') playSuccessSound();
-  }, [phase]);
+  }, [phase, reducedMotion]);
 
   // Haptic on success
   useEffect(() => {
@@ -60,14 +53,14 @@ export const AnimationSequence = () => {
   // Sending: 2200ms (enough for the avatar-to-avatar animation to land)
   useEffect(() => {
     if (phase === 'burn') {
-      const timer = setTimeout(advanceToSending, 1800);
+      const timer = setTimeout(advanceToSending, reducedMotion ? 400 : 1800);
       return () => clearTimeout(timer);
     }
     if (phase === 'sending') {
-      const timer = setTimeout(advanceToSuccess, 2200);
+      const timer = setTimeout(advanceToSuccess, reducedMotion ? 400 : 2200);
       return () => clearTimeout(timer);
     }
-  }, [phase, advanceToSending, advanceToSuccess]);
+  }, [phase, advanceToSending, advanceToSuccess, reducedMotion]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 relative">
@@ -79,7 +72,7 @@ export const AnimationSequence = () => {
         {phase === 'burn' && (
           <motion.div
             key="burn"
-            className="text-center relative w-full"
+            className="text-center relative w-full min-h-[60vh]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -97,8 +90,8 @@ export const AnimationSequence = () => {
               }}
             />
 
-            {/* Ember particles — upgraded physics */}
-            <EmberParticles count={50} spread={180} />
+            {/* Ember particles — skip for reduced motion */}
+            {!reducedMotion && <EmberParticles count={50} spread={180} />}
 
             {/* Burn amount — dissolves with blur and vertical drift */}
             <motion.div className="relative z-10">

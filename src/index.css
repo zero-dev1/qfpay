@@ -85,3 +85,15 @@ input:-webkit-autofill:focus {
   33% { transform: translate(-25px, 20px) scale(1.05); }
   66% { transform: translate(20px, -15px) scale(0.95); }
 }
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

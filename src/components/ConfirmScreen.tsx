@@ -10,7 +10,7 @@ import { showToast } from './Toast';
 import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
 
 export const ConfirmScreen = () => {
-  const { ss58Address, qnsName: senderName } = useWalletStore();
+  const { ss58Address, qnsName: senderName, avatarUrl: senderAvatar } = useWalletStore();
   const {
     phase,
     recipientName,
@@ -136,11 +136,19 @@ export const ConfirmScreen = () => {
         >
           {/* From */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-              <span className="font-clash font-semibold text-xs text-white">
-                {senderName ? senderName[0].toUpperCase() : 'Y'}
-              </span>
-            </div>
+            {senderAvatar ? (
+              <img
+                src={senderAvatar}
+                alt={senderName || 'You'}
+                className="w-9 h-9 rounded-full object-cover border border-white/15 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                <span className="font-clash font-semibold text-xs text-white">
+                  {senderName ? senderName[0].toUpperCase() : 'Y'}
+                </span>
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="font-satoshi text-xs text-white/40">From</p>
               <p className="font-satoshi font-medium text-sm text-white truncate">

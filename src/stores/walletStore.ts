@@ -14,6 +14,7 @@ interface WalletState {
   ss58Address: string | null;
   qnsName: string | null;
   displayName: string | null;
+  avatarUrl: string | null;
   connecting: boolean;
   walletConnection: WalletConnection | null;
   walletName: string | null;
@@ -37,6 +38,7 @@ export const useWalletStore = create<WalletState>()(
       ss58Address: null,
       qnsName: null,
       displayName: null,
+      avatarUrl: null,
       connecting: false,
       walletConnection: null,
       walletName: null,
@@ -80,9 +82,19 @@ export const useWalletStore = create<WalletState>()(
             walletName: walletType,
           });
 
-          // Resolve QNS name in background
-          resolveReverse(evmAddr).then(name => {
-            if (name) set({ qnsName: name, displayName: name });
+          // Resolve QNS name + avatar in background
+          resolveReverse(evmAddr).then(async (name) => {
+            if (name) {
+              set({ qnsName: name, displayName: name });
+              // Fetch avatar now — persisted for ConfirmScreen & AnimationSequence
+              try {
+                const { getAvatar } = await import('../utils/qfpay');
+                const url = await getAvatar(name);
+                if (url) set({ avatarUrl: url });
+              } catch {
+                // Non-critical — fallback to initial
+              }
+            }
           }).catch(() => {});
 
           // Map account
@@ -152,6 +164,7 @@ export const useWalletStore = create<WalletState>()(
           ss58Address: null,
           qnsName: null,
           displayName: null,
+          avatarUrl: null,
           walletConnection: null,
           walletName: null,
           accountMapped: false,
@@ -207,6 +220,7 @@ export const useWalletStore = create<WalletState>()(
         displayName: state.displayName,
         walletName: state.walletName,
         accountMapped: state.accountMapped,
+        avatarUrl: state.avatarUrl,
       }),
       onRehydrateStorage: () => {
         return (state) => {

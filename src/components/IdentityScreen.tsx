@@ -2,32 +2,25 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
-import { getQFBalance, formatQF, getAvatar, truncateAddress } from '../utils/qfpay';
+import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
 import { Send, ExternalLink } from 'lucide-react';
 import logoMarkSvg from '../assets/logo-mark.svg';
 import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
 import { Skeleton } from './ui/Skeleton';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export const IdentityScreen = () => {
-  const { qnsName, address, ss58Address } = useWalletStore();
+  const { qnsName, address, ss58Address, avatarUrl } = useWalletStore();
   const { goToRecipient } = usePaymentStore();
   const [balance, setBalance] = useState<bigint | null>(null);
-  const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (ss58Address) {
       getQFBalance(ss58Address).then(setBalance);
     }
   }, [ss58Address]);
-
-  useEffect(() => {
-    if (qnsName) {
-      getAvatar(qnsName).then(url => {
-        if (url) setAvatar(url);
-      });
-    }
-  }, [qnsName]);
 
   const hasQNS = !!qnsName;
 
@@ -49,13 +42,15 @@ export const IdentityScreen = () => {
           {/* Avatar with glow ring */}
           <motion.div className="relative mb-8" variants={staggerChild}>
             {/* Outer glow */}
-            <div className="absolute -inset-3 bg-qfpay-blue/10 rounded-full blur-xl animate-pulse-glow" />
+            <div className={`absolute -inset-3 bg-qfpay-blue/10 rounded-full blur-xl ${
+              reducedMotion ? 'opacity-50' : 'animate-pulse-glow'
+            }`} />
             {/* Ring */}
             <div className="relative w-28 h-28 rounded-full p-[2px] bg-gradient-to-b from-qfpay-blue/40 to-qfpay-blue/10">
               <div className="w-full h-full rounded-full overflow-hidden bg-qfpay-bg">
-                {avatar ? (
+                {avatarUrl ? (
                   <img
-                    src={avatar}
+                    src={avatarUrl}
                     alt={qnsName}
                     className={`w-full h-full object-cover transition-opacity duration-500 ${
                       avatarLoaded ? 'opacity-100' : 'opacity-0'
@@ -129,13 +124,23 @@ export const IdentityScreen = () => {
             Send Payment
           </motion.button>
 
-          {/* No transactions yet — future-facing */}
-          <motion.p
-            className="mt-10 font-satoshi text-sm text-qfpay-text-muted"
+          {/* Empty state — designed, not placeholder */}
+          <motion.div
+            className="mt-10 flex items-center gap-2.5 px-5 py-3 rounded-xl border border-dashed border-qfpay-border"
             variants={staggerChild}
           >
-            No recent transactions yet
-          </motion.p>
+            <div className="w-8 h-8 rounded-full bg-qfpay-surface flex items-center justify-center flex-shrink-0">
+              <Send className="w-3.5 h-3.5 text-qfpay-text-muted" />
+            </div>
+            <div>
+              <p className="font-satoshi text-sm text-qfpay-text-secondary">
+                No transactions yet
+              </p>
+              <p className="font-satoshi text-xs text-qfpay-text-muted">
+                Your payment history will appear here
+              </p>
+            </div>
+          </motion.div>
         </motion.div>
       ) : (
         /* ─── No QNS Gate ─── */

@@ -6,6 +6,7 @@ import { detectAddressType, ss58ToEvmAddress } from '../utils/address';
 import { useWalletStore } from '../stores/walletStore';
 import { Loader2, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 const EXAMPLE_NAMES = ['memechi.qf', 'alice.qf', 'spin.qf', 'satoshi.qf', 'dev.qf'];
 const TYPE_SPEED = 80;
@@ -23,6 +24,7 @@ export const RecipientScreen = () => {
     recipientAvatar,
   } = usePaymentStore();
   const { address: senderAddress } = useWalletStore();
+  const reducedMotion = useReducedMotion();
 
   const [input, setInput] = useState('');
   const [isResolving, setIsResolving] = useState(false);
@@ -41,7 +43,7 @@ export const RecipientScreen = () => {
 
   // Auto-typing placeholder — unchanged logic, just runs when input is empty
   useEffect(() => {
-    if (input) return;
+    if (input || reducedMotion) return;
 
     let nameIndex = 0;
     let charIndex = 0;
@@ -208,6 +210,10 @@ export const RecipientScreen = () => {
           className="absolute inset-0 w-full opacity-0 z-10 cursor-text"
           autoComplete="off"
           spellCheck={false}
+          aria-label="Recipient .qf name or address"
+          role="combobox"
+          aria-expanded={resolved && !!recipientName}
+          aria-autocomplete="none"
         />
 
         {/* Display layer */}
@@ -240,13 +246,15 @@ export const RecipientScreen = () => {
           ) : (
             <div className="flex items-center">
               <span className="font-clash font-bold text-4xl sm:text-5xl md:text-6xl text-white/20">
-                {placeholder}
+                {reducedMotion ? 'alice.qf' : placeholder}
               </span>
-              <motion.span
-                className="inline-block w-[3px] h-[1em] bg-white/20 ml-1 font-clash text-5xl"
-                animate={{ opacity: [1, 0] }}
-                transition={{ duration: 0.6, repeat: Infinity, repeatType: 'reverse' }}
-              />
+              {!reducedMotion && (
+                <motion.span
+                  className="inline-block w-[3px] h-[1em] bg-white/20 ml-1 font-clash text-5xl"
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.6, repeat: Infinity, repeatType: 'reverse' }}
+                />
+              )}
             </div>
           )}
         </div>
@@ -264,90 +272,92 @@ export const RecipientScreen = () => {
         {/* ── RESOLVED IDENTITY CARD ── */}
         {/* This is the key new element — when a .qf name resolves, we show */}
         {/* the avatar + name as a confirmed identity, not just text feedback */}
-        <AnimatePresence>
-          {resolved && recipientName && !error && (
-            <motion.div
-              className="flex items-center justify-center gap-3 mt-6"
-              initial={{ opacity: 0, y: 8, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.95 }}
-              transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
-            >
-              {/* Recipient avatar — THE product moment */}
-              <div className="relative">
-                {recipientAvatar ? (
-                  <motion.div
-                    className="w-10 h-10 rounded-full overflow-hidden border border-white/20"
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{
-                      scale: avatarLoaded ? 1 : 0,
-                      opacity: avatarLoaded ? 1 : 0,
-                    }}
-                    transition={EASE_SPRING}
-                  >
-                    <img
-                      src={recipientAvatar}
-                      alt={recipientName}
-                      className="w-full h-full object-cover"
-                      onLoad={() => setAvatarLoaded(true)}
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={EASE_SPRING}
-                  >
-                    <span className="font-clash font-semibold text-sm text-white">
-                      {recipientName[0].toUpperCase()}
-                    </span>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Resolved name with .qf badge */}
+        <div aria-live="polite" aria-atomic="true">
+          <AnimatePresence>
+            {resolved && recipientName && !error && (
               <motion.div
-                className="flex items-center gap-1.5"
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1, duration: 0.3, ease: EASE_OUT_EXPO }}
+                className="flex items-center justify-center gap-3 mt-6"
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
               >
-                <span className="font-satoshi font-medium text-white text-base">
-                  {recipientName}
-                </span>
-                <span className="font-satoshi text-white/50 text-base">.qf</span>
+                {/* Recipient avatar — THE product moment */}
+                <div className="relative">
+                  {recipientAvatar ? (
+                    <motion.div
+                      className="w-10 h-10 rounded-full overflow-hidden border border-white/20"
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{
+                        scale: avatarLoaded ? 1 : 0,
+                        opacity: avatarLoaded ? 1 : 0,
+                      }}
+                      transition={EASE_SPRING}
+                    >
+                      <img
+                        src={recipientAvatar}
+                        alt={recipientName}
+                        className="w-full h-full object-cover"
+                        onLoad={() => setAvatarLoaded(true)}
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={EASE_SPRING}
+                    >
+                      <span className="font-clash font-semibold text-sm text-white">
+                        {recipientName[0].toUpperCase()}
+                      </span>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Resolved name with .qf badge */}
+                <motion.div
+                  className="flex items-center gap-1.5"
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1, duration: 0.3, ease: EASE_OUT_EXPO }}
+                >
+                  <span className="font-satoshi font-medium text-white text-base">
+                    {recipientName}
+                  </span>
+                  <span className="font-satoshi text-white/50 text-base">.qf</span>
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
+            )}
 
-          {/* Non-QNS address resolved — show truncated address */}
-          {resolved && !recipientName && recipientAddress && !error && (
-            <motion.p
-              className="text-center font-mono text-white/50 text-sm mt-4"
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-            >
-              {recipientAddress.slice(0, 10)}...{recipientAddress.slice(-6)}
-            </motion.p>
-          )}
+            {/* Non-QNS address resolved — show truncated address */}
+            {resolved && !recipientName && recipientAddress && !error && (
+              <motion.p
+                className="text-center font-mono text-white/50 text-sm mt-4"
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+              >
+                {recipientAddress.slice(0, 10)}...{recipientAddress.slice(-6)}
+              </motion.p>
+            )}
 
-          {/* Error feedback */}
-          {error && (
-            <motion.p
-              key="error-msg"
-              className="text-center font-satoshi text-red-300 text-sm mt-4"
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={{ duration: 0.2 }}
-            >
-              {error}
-            </motion.p>
-          )}
-        </AnimatePresence>
+            {/* Error feedback */}
+            {error && (
+              <motion.p
+                key="error-msg"
+                className="text-center font-satoshi text-red-300 text-sm mt-4"
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.2 }}
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Continue button — upgraded from bare arrow to pill */}

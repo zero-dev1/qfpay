@@ -52,7 +52,7 @@ export const EmberParticles = ({ count = 45, spread = 160 }: EmberParticlesProps
   }, [count, spread]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ willChange: 'transform' }}>
       {particles.map((p) => (
         <motion.div
           key={p.id}
