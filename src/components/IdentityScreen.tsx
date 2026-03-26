@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
@@ -87,18 +87,32 @@ export const IdentityScreen = () => {
             {truncateAddress(address || '')}
           </motion.p>
 
-          {/* Balance — large, typographic dominance */}
-          <motion.div className="mb-12" variants={staggerChild}>
-            {balance !== null ? (
-              <div className="flex items-baseline gap-3">
-                <span className="font-clash font-bold text-6xl sm:text-7xl text-qfpay-text-primary">
-                  {formatQF(balance)}
-                </span>
-                <span className="font-clash text-2xl text-qfpay-text-muted">QF</span>
-              </div>
-            ) : (
-              <Skeleton className="w-48 h-16" rounded="lg" />
-            )}
+          {/* Balance — crossfade from skeleton */}
+          <motion.div className="mb-12 h-[76px] flex items-center" variants={staggerChild}>
+            <AnimatePresence mode="wait">
+              {balance !== null ? (
+                <motion.div
+                  key="balance"
+                  className="flex items-baseline gap-3"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+                >
+                  <span className="font-clash font-bold text-6xl sm:text-7xl text-qfpay-text-primary">
+                    {formatQF(balance)}
+                  </span>
+                  <span className="font-clash text-2xl text-qfpay-text-muted">QF</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="skeleton"
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Skeleton className="w-48 h-16" rounded="lg" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Burn stat — ambient */}
@@ -112,35 +126,17 @@ export const IdentityScreen = () => {
             </span>
           </motion.div>
 
-          {/* Send Payment button — primary action */}
+          {/* Send Payment button */}
           <motion.button
             className="group flex items-center gap-3 bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-10 py-4 rounded-2xl transition-all focus-ring"
             onClick={goToRecipient}
             variants={staggerChild}
-            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0, 82, 255, 0.25)' }}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgb(0 64 255 / 0.25)' }}
             whileTap={{ scale: 0.98 }}
           >
             <Send className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
             Send Payment
           </motion.button>
-
-          {/* Empty state — designed, not placeholder */}
-          <motion.div
-            className="mt-10 flex items-center gap-2.5 px-5 py-3 rounded-xl border border-dashed border-qfpay-border"
-            variants={staggerChild}
-          >
-            <div className="w-8 h-8 rounded-full bg-qfpay-surface flex items-center justify-center flex-shrink-0">
-              <Send className="w-3.5 h-3.5 text-qfpay-text-muted" />
-            </div>
-            <div>
-              <p className="font-satoshi text-sm text-qfpay-text-secondary">
-                No transactions yet
-              </p>
-              <p className="font-satoshi text-xs text-qfpay-text-muted">
-                Your payment history will appear here
-              </p>
-            </div>
-          </motion.div>
         </motion.div>
       ) : (
         /* ─── No QNS Gate ─── */
@@ -188,7 +184,7 @@ export const IdentityScreen = () => {
             rel="noopener noreferrer"
             className="group flex items-center gap-2.5 bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-10 py-4 rounded-2xl transition-colors focus-ring"
             variants={staggerChild}
-            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0, 82, 255, 0.25)' }}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0, 64, 255, 0.25)' }}
             whileTap={{ scale: 0.98 }}
           >
             Claim your .qf name

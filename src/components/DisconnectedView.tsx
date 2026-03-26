@@ -73,7 +73,7 @@ export const DisconnectedView = () => {
           <motion.button
             className="relative bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-14 py-4 rounded-2xl transition-colors focus-ring"
             onClick={() => setShowWalletModal(true)}
-            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0, 82, 255, 0.3)' }}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0, 64, 255, 0.3)' }}
             whileTap={{ scale: 0.98 }}
           >
             Connect Wallet

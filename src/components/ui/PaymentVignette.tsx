@@ -9,9 +9,9 @@ const SCENARIOS = [
 ];
 
 // Phase durations (ms)
-const IDLE_DURATION = 800;
-const SENDING_DURATION = 1200;
-const DONE_DURATION = 1800;
+const IDLE_DURATION = 1200;    // was 800 — give users time to read
+const SENDING_DURATION = 1200; // unchanged
+const DONE_DURATION = 2200;    // was 1800 — hold the checkmark longer
 
 export const PaymentVignette = () => {
   const [index, setIndex] = useState(0);

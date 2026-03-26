@@ -130,7 +130,7 @@ export const AmountScreen = () => {
                 key={amount}
                 className={`relative px-5 py-2.5 rounded-full text-sm font-satoshi font-medium transition-colors focus-ring ${
                   isSelected
-                    ? 'bg-white text-[#0052FF]'
+                    ? 'bg-white text-[#0040FF]'
                     : 'bg-white/[0.06] text-white/50 hover:bg-white/[0.1] hover:text-white/80'
                 }`}
                 onClick={() => setAmountInput(amount.toString())}

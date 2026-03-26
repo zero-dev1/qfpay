@@ -4,34 +4,34 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Brand
-        'qfpay-blue': '#0052FF',
-        'qfpay-blue-hover': '#0047E1',
-        'qfpay-blue-glow': 'rgba(0, 82, 255, 0.15)',
-        'qfpay-blue-subtle': 'rgba(0, 82, 255, 0.08)',
-        
-        // Blue-tinted dark surfaces (NOT pure neutrals)
-        'qfpay-bg': '#060A14',          // was #0A0A0A — now blue-tinted near-black
-        'qfpay-surface': '#0C1019',     // was #111111 — card/modal backgrounds
-        'qfpay-surface-hover': '#111827', // elevated hover state
-        'qfpay-border': 'rgba(0, 82, 255, 0.08)', // subtle blue-tinted borders
-        'qfpay-border-hover': 'rgba(0, 82, 255, 0.15)',
-        
-        // Burn crimson palette
+        // Brand — Deep Sapphire Blue
+        'qfpay-blue': '#0040FF',
+        'qfpay-blue-hover': '#0036DB',
+        'qfpay-blue-glow': 'rgba(0, 64, 255, 0.15)',
+        'qfpay-blue-subtle': 'rgba(0, 64, 255, 0.08)',
+
+        // Blue-tinted dark surfaces
+        'qfpay-bg': '#060A14',
+        'qfpay-surface': '#0C1019',
+        'qfpay-surface-hover': '#111827',
+        'qfpay-border': 'rgba(0, 64, 255, 0.08)',
+        'qfpay-border-hover': 'rgba(0, 64, 255, 0.15)',
+
+        // Burn crimson palette (unchanged)
         'qfpay-burn': '#B91C1C',
         'qfpay-burn-bright': '#DC2626',
         'qfpay-burn-ember': '#F59E0B',
         'qfpay-burn-glow': 'rgba(185, 28, 28, 0.2)',
-        
-        // Semantic
+
+        // Semantic (unchanged)
         'qfpay-green': '#00D179',
         'qfpay-error': '#E5484D',
         'qfpay-warning': '#F5A623',
-        
-        // Text hierarchy (blue-tinted, not flat grey)
-        'qfpay-text-primary': '#F0F2F8',    // not pure white
-        'qfpay-text-secondary': '#7A8BAB',   // blue-grey, not #8A8A8A
-        'qfpay-text-muted': '#3D4A63',       // deep blue-grey
+
+        // Text hierarchy (unchanged)
+        'qfpay-text-primary': '#F0F2F8',
+        'qfpay-text-secondary': '#7A8BAB',
+        'qfpay-text-muted': '#3D4A63',
       },
       fontFamily: {
         clash: ['"Clash Display"', 'sans-serif'],

@@ -221,7 +221,7 @@ export const ConfirmScreen = () => {
         {/* Confirm button */}
         <motion.div variants={staggerChild}>
           <motion.button
-            className="w-full bg-white text-[#0052FF] font-satoshi font-semibold text-lg py-4 rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 focus-ring"
+            className="w-full bg-white text-[#0040FF] font-satoshi font-semibold text-lg py-4 rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 focus-ring"
             onClick={handleConfirm}
             disabled={isBroadcasting}
             whileHover={!isBroadcasting ? { scale: 1.01, boxShadow: '0 0 30px rgba(255, 255, 255, 0.15)' } : undefined}

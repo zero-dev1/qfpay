@@ -12,6 +12,7 @@ import { AnimationSequence } from './components/AnimationSequence';
 import { Toast } from './components/Toast';
 import { LogOut, WifiOff } from 'lucide-react';
 import { EASE_OUT_EXPO } from './lib/animations';
+import { BG_PRIMARY, BRAND_BLUE_DEEP } from './lib/colors';
 
 function App() {
   const { address, disconnect } = useWalletStore();
@@ -32,22 +33,10 @@ function App() {
     };
   }, []);
 
+  // ── Background color: dark throughout, deep blue only at success ──
   const getBackgroundColor = (): string => {
-    switch (phase) {
-      case 'burn':
-        return '#060A14';
-      case 'sending':
-        return '#060A14';
-      case 'success':
-        return '#0052FF';
-      case 'recipient':
-      case 'amount':
-      case 'preview':
-      case 'broadcasting':
-        return '#0052FF';
-      default:
-        return '#060A14';
-    }
+    if (phase === 'success') return BRAND_BLUE_DEEP;
+    return BG_PRIMARY;
   };
 
   const isAnimating =
@@ -124,13 +113,15 @@ function App() {
       </AnimatePresence>
 
       {/* ── Screen transitions ── */}
+      {/* Each screen owns its own entrance/exit animation.        */}
+      {/* The outer wrapper only handles mount/unmount keying.     */}
       <AnimatePresence mode="wait">
         <motion.div
           key={key}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
+          transition={{ duration: 0.15 }}
         >
           {element}
         </motion.div>

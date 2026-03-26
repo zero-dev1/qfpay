@@ -21,7 +21,7 @@ export const Skeleton = ({ className = '', rounded = 'md' }: SkeletonProps) => {
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(90deg, transparent 0%, rgba(0, 82, 255, 0.04) 50%, transparent 100%)',
+            'linear-gradient(90deg, transparent 0%, rgba(0, 64, 255, 0.04) 50%, transparent 100%)',
         }}
         animate={{ x: ['-100%', '100%'] }}
         transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
