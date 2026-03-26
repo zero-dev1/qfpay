@@ -4,16 +4,34 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Brand
         'qfpay-blue': '#0052FF',
         'qfpay-blue-hover': '#0047E1',
-        'qfpay-bg': '#0A0A0A',
-        'qfpay-card': '#111111',
-        'qfpay-burn': '#C13333',
-        'qfpay-burn-orange': '#E85D25',
+        'qfpay-blue-glow': 'rgba(0, 82, 255, 0.15)',
+        'qfpay-blue-subtle': 'rgba(0, 82, 255, 0.08)',
+        
+        // Blue-tinted dark surfaces (NOT pure neutrals)
+        'qfpay-bg': '#060A14',          // was #0A0A0A — now blue-tinted near-black
+        'qfpay-surface': '#0C1019',     // was #111111 — card/modal backgrounds
+        'qfpay-surface-hover': '#111827', // elevated hover state
+        'qfpay-border': 'rgba(0, 82, 255, 0.08)', // subtle blue-tinted borders
+        'qfpay-border-hover': 'rgba(0, 82, 255, 0.15)',
+        
+        // Burn crimson palette
+        'qfpay-burn': '#B91C1C',
+        'qfpay-burn-bright': '#DC2626',
+        'qfpay-burn-ember': '#F59E0B',
+        'qfpay-burn-glow': 'rgba(185, 28, 28, 0.2)',
+        
+        // Semantic
         'qfpay-green': '#00D179',
         'qfpay-error': '#E5484D',
         'qfpay-warning': '#F5A623',
-        'qfpay-secondary': '#8A8A8A',
+        
+        // Text hierarchy (blue-tinted, not flat grey)
+        'qfpay-text-primary': '#F0F2F8',    // not pure white
+        'qfpay-text-secondary': '#7A8BAB',   // blue-grey, not #8A8A8A
+        'qfpay-text-muted': '#3D4A63',       // deep blue-grey
       },
       fontFamily: {
         clash: ['"Clash Display"', 'sans-serif'],
@@ -21,13 +39,24 @@ module.exports = {
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       keyframes: {
-        'pulse-slow': {
-          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
-          '50%': { opacity: '0.7', transform: 'scale(1.05)' },
+        'gradient-shift': {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { opacity: '0.4' },
+          '50%': { opacity: '0.8' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
         },
       },
       animation: {
-        'pulse-slow': 'pulse-slow 2s ease-in-out infinite',
+        'gradient-shift': 'gradient-shift 8s ease-in-out infinite',
+        'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
+        shimmer: 'shimmer 2s ease-in-out infinite',
       },
     },
   },

@@ -6,9 +6,55 @@
 @tailwind utilities;
 
 body {
-  background-color: #0A0A0A;
-  color: #FFFFFF;
+  background-color: #060A14;
+  color: #F0F2F8;
   font-family: 'Satoshi', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Brand-tinted base ─── */
+body {
+  background-color: #060A14;
+  color: #F0F2F8;
+}
+
+/* ─── Selection color ─── */
+::selection {
+  background: rgba(0, 82, 255, 0.3);
+  color: #F0F2F8;
+}
+
+/* ─── Scrollbar (Webkit) ─── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 82, 255, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 82, 255, 0.25);
+}
+
+/* ─── Focus ring utility ─── */
+.focus-ring:focus-visible {
+  outline: 2px solid rgba(0, 82, 255, 0.5);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+@keyframes float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+@keyframes float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-25px, 20px) scale(1.05); }
+  66% { transform: translate(20px, -15px) scale(0.95); }
 }

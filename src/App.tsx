@@ -10,6 +10,7 @@ import { ConfirmScreen } from './components/ConfirmScreen';
 import { AnimationSequence } from './components/AnimationSequence';
 import { Toast } from './components/Toast';
 import { LogOut } from 'lucide-react';
+import { EASE_OUT_EXPO } from './lib/animations';
 
 function App() {
   const { address, disconnect } = useWalletStore();
@@ -18,9 +19,11 @@ function App() {
   const getBackgroundStyle = (): React.CSSProperties => {
     switch (phase) {
       case 'burn':
-        return { background: 'linear-gradient(to top, #E85D25, #C13333, #0A0A0A)' };
+        return {
+          background: 'linear-gradient(to top, rgba(185, 28, 28, 0.3), #060A14 70%)',
+        };
       case 'sending':
-        return { backgroundColor: '#00D179' };
+        return { backgroundColor: '#060A14' };
       case 'success':
         return { backgroundColor: '#0052FF' };
       case 'recipient':
@@ -29,7 +32,7 @@ function App() {
       case 'broadcasting':
         return { backgroundColor: '#0052FF' };
       default:
-        return { backgroundColor: '#0A0A0A' };
+        return { backgroundColor: '#060A14' };
     }
   };
 
@@ -65,8 +68,10 @@ function App() {
 
   return (
     <motion.div
-      className="min-h-screen w-full relative overflow-hidden"
+      className="min-h-screen w-full relative overflow-hidden bg-qfpay-bg"
       style={getBackgroundStyle()}
+      animate={{ backgroundColor: getBackgroundStyle().backgroundColor }}
+      transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
     >
       {/* Logout button */}
       <AnimatePresence>

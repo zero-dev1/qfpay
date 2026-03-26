@@ -1,57 +1,93 @@
 import { motion } from 'framer-motion';
 import { useWalletStore } from '../stores/walletStore';
 import logoMark from '../assets/logo-mark.svg';
+import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
+import { HeroBackground } from './ui/HeroBackground';
+import { PaymentVignette } from './ui/PaymentVignette';
 
 export const DisconnectedView = () => {
   const { setShowWalletModal } = useWalletStore();
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center min-h-screen px-6"
+      className="relative flex flex-col items-center justify-center min-h-screen px-6 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, y: -30 }}
-      transition={{ duration: 0.5 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.6 }}
     >
-      {/* Logo mark */}
-      <motion.img
-        src={logoMark}
-        alt="QFPay"
-        className="w-16 h-16 mb-8"
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.05, duration: 0.5 }}
-      />
+      {/* Atmospheric background */}
+      <HeroBackground />
 
-      <motion.h1
-        className="font-clash font-bold text-6xl sm:text-7xl md:text-8xl text-white mb-4 tracking-tight"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.6 }}
+      {/* Content — stagger all children */}
+      <motion.div
+        className="relative z-10 flex flex-col items-center text-center max-w-2xl"
+        variants={staggerContainer(0.12)}
+        initial="initial"
+        animate="animate"
       >
-        <span className="text-qfpay-blue">QF</span>Pay
-      </motion.h1>
+        {/* Logo mark with subtle glow */}
+        <motion.div className="relative mb-10" variants={staggerChild}>
+          {/* Glow behind logo */}
+          <div className="absolute inset-0 w-14 h-14 bg-qfpay-blue/20 rounded-full blur-xl scale-150" />
+          <img
+            src={logoMark}
+            alt="QFPay"
+            className="relative w-14 h-14"
+          />
+        </motion.div>
 
-      <motion.p
-        className="font-satoshi text-lg sm:text-xl text-white/40 mb-12"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-      >
-        Instant money. Just a name.
-      </motion.p>
+        {/* Tagline — the hero moment */}
+        {/* Each word enters separately for typographic weight */}
+        <motion.div className="mb-4" variants={staggerChild}>
+          <h1 className="font-clash font-bold text-[clamp(2.5rem,8vw,5.5rem)] leading-[0.95] tracking-tight text-qfpay-text-primary">
+            Instant money.
+          </h1>
+        </motion.div>
+        <motion.div className="mb-8" variants={staggerChild}>
+          <h1 className="font-clash font-bold text-[clamp(2.5rem,8vw,5.5rem)] leading-[0.95] tracking-tight">
+            <span className="text-qfpay-text-primary">Just a </span>
+            <span className="text-qfpay-blue">name.</span>
+          </h1>
+        </motion.div>
 
-      <motion.button
-        className="bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-12 py-4 rounded-2xl transition-colors"
-        onClick={() => setShowWalletModal(true)}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        Connect Wallet
-      </motion.button>
+        {/* Sub-tagline — bridges emotional gap */}
+        <motion.p
+          className="font-satoshi text-lg sm:text-xl text-qfpay-text-secondary max-w-md mb-12"
+          variants={staggerChild}
+        >
+          Send QF to anyone with a{' '}
+          <span className="text-qfpay-blue font-medium">.qf name</span>
+          {' '}— no addresses, no complexity.
+        </motion.p>
+
+        {/* Animated payment vignette — shows the product working */}
+        <motion.div className="mb-14" variants={staggerChild}>
+          <PaymentVignette />
+        </motion.div>
+
+        {/* Connect button with glow + border animation */}
+        <motion.div className="relative" variants={staggerChild}>
+          {/* Ambient glow behind button */}
+          <div className="absolute -inset-1 bg-qfpay-blue/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+          <motion.button
+            className="relative bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-14 py-4 rounded-2xl transition-colors focus-ring"
+            onClick={() => setShowWalletModal(true)}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0, 82, 255, 0.3)' }}
+            whileTap={{ scale: 0.98 }}
+          >
+            Connect Wallet
+          </motion.button>
+        </motion.div>
+
+        {/* Subtle ecosystem note */}
+        <motion.p
+          className="mt-8 font-satoshi text-sm text-qfpay-text-muted"
+          variants={staggerChild}
+        >
+          Powered by QF Network · Sub-second finality · 0.1% deflationary burn
+        </motion.p>
+      </motion.div>
     </motion.div>
   );
 };
