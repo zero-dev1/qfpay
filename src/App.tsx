@@ -16,23 +16,23 @@ function App() {
   const { address, disconnect } = useWalletStore();
   const { phase } = usePaymentStore();
 
-  const getBackgroundStyle = (): React.CSSProperties => {
+  // Background color for each phase — animated via Framer Motion
+  // The burn phase uses its own internal gradient overlay, so the base stays dark
+  const getBackgroundColor = (): string => {
     switch (phase) {
       case 'burn':
-        return {
-          background: 'linear-gradient(to top, rgba(185, 28, 28, 0.3), #060A14 70%)',
-        };
+        return '#060A14';
       case 'sending':
-        return { backgroundColor: '#060A14' };
+        return '#060A14';
       case 'success':
-        return { backgroundColor: '#0052FF' };
+        return '#0052FF';
       case 'recipient':
       case 'amount':
       case 'preview':
       case 'broadcasting':
-        return { backgroundColor: '#0052FF' };
+        return '#0052FF';
       default:
-        return { backgroundColor: '#060A14' };
+        return '#060A14';
     }
   };
 
@@ -68,16 +68,15 @@ function App() {
 
   return (
     <motion.div
-      className="min-h-screen w-full relative overflow-hidden bg-qfpay-bg"
-      style={getBackgroundStyle()}
-      animate={{ backgroundColor: getBackgroundStyle().backgroundColor }}
+      className="min-h-screen w-full relative overflow-hidden"
+      animate={{ backgroundColor: getBackgroundColor() }}
       transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
     >
       {/* Logout button */}
       <AnimatePresence>
         {showLogout && (
           <motion.button
-            className="fixed top-6 right-6 z-50 p-2.5 rounded-full hover:bg-white/10 transition-colors"
+            className="fixed top-6 right-6 z-50 p-2.5 rounded-full hover:bg-white/10 transition-colors focus-ring"
             onClick={disconnect}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
