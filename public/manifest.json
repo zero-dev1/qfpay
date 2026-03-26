@@ -1,12 +1,13 @@
 {
   "name": "QFPay",
   "short_name": "QFPay",
-  "description": "Send QF tokens instantly to any .qf name.",
+  "description": "Send QF tokens instantly to any .qf name. No addresses, no hassle.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0A0A0A",
-  "theme_color": "#0A0A0A",
+  "background_color": "#060A14",
+  "theme_color": "#060A14",
   "orientation": "portrait",
+  "categories": ["finance", "utilities"],
   "icons": [
     {
       "src": "/pwa-192.png",

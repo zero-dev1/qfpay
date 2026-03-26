@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { useWalletStore } from './stores/walletStore';
 import { usePaymentStore } from './stores/paymentStore';
 import { DisconnectedView } from './components/DisconnectedView';
@@ -9,15 +10,28 @@ import { AmountScreen } from './components/AmountScreen';
 import { ConfirmScreen } from './components/ConfirmScreen';
 import { AnimationSequence } from './components/AnimationSequence';
 import { Toast } from './components/Toast';
-import { LogOut } from 'lucide-react';
+import { LogOut, WifiOff } from 'lucide-react';
 import { EASE_OUT_EXPO } from './lib/animations';
 
 function App() {
   const { address, disconnect } = useWalletStore();
   const { phase } = usePaymentStore();
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Background color for each phase — animated via Framer Motion
-  // The burn phase uses its own internal gradient overlay, so the base stays dark
+  // Network status listener
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const getBackgroundColor = (): string => {
     switch (phase) {
       case 'burn':
@@ -36,10 +50,10 @@ function App() {
     }
   };
 
-  const isAnimating = phase === 'burn' || phase === 'sending' || phase === 'success';
+  const isAnimating =
+    phase === 'burn' || phase === 'sending' || phase === 'success';
   const showLogout = !!address && !isAnimating;
 
-  // Determine which single screen to render and its key
   const getScreen = (): { key: string; element: React.ReactNode } => {
     if (!address) {
       return { key: 'disconnected', element: <DisconnectedView /> };
@@ -72,23 +86,44 @@ function App() {
       animate={{ backgroundColor: getBackgroundColor() }}
       transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
     >
-      {/* Logout button */}
+      {/* ── Offline indicator ── */}
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div
+            className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 px-4 py-2 rounded-full bg-qfpay-warning/[0.08] border border-qfpay-warning/[0.15] backdrop-blur-md"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+          >
+            <WifiOff className="w-3.5 h-3.5 text-qfpay-warning" />
+            <span className="font-satoshi text-xs font-medium text-qfpay-warning">
+              No connection
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Logout button ── */}
       <AnimatePresence>
         {showLogout && (
           <motion.button
-            className="fixed top-6 right-6 z-50 p-2.5 rounded-full hover:bg-white/10 transition-colors focus-ring"
+            className="fixed top-6 right-6 z-50 p-2.5 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.06] transition-all focus-ring"
             onClick={disconnect}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             title="Disconnect wallet"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <LogOut className="w-5 h-5 text-white/40 hover:text-white/70" />
+            <LogOut className="w-4 h-4 text-white/50" />
           </motion.button>
         )}
       </AnimatePresence>
 
+      {/* ── Screen transitions ── */}
       <AnimatePresence mode="wait">
         <motion.div
           key={key}
