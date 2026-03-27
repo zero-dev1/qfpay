@@ -18,17 +18,18 @@ export const AmountScreen = () => {
     goToPreview,
     goBackToRecipient,
   } = usePaymentStore();
-  const { ss58Address } = useWalletStore();
+  const { ss58Address, address } = useWalletStore();
 
   const [amountInput, setAmountInput] = useState('');
   const [balance, setBalance] = useState<bigint>(0n);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (ss58Address) {
-      getQFBalance(ss58Address).then(setBalance);
+    const addr = ss58Address || address;
+    if (addr) {
+      getQFBalance(addr).then(setBalance);
     }
-  }, [ss58Address]);
+  }, [ss58Address, address]);
 
   useEffect(() => {
     inputRef.current?.focus();

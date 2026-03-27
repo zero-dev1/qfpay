@@ -12,7 +12,8 @@ import { hapticLight, hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
 
 export const ConfirmScreen = () => {
-  const { ss58Address, qnsName: senderName, avatarUrl: senderAvatar } = useWalletStore();
+  const { address, ss58Address, qnsName: senderName, avatarUrl: senderAvatar, providerType } =
+    useWalletStore();
   const {
     phase,
     recipientName,
@@ -39,7 +40,8 @@ export const ConfirmScreen = () => {
   const displaySender = senderName ? `${senderName}.qf` : 'You';
 
   const handleConfirm = async () => {
-    if (!recipientAddress || !ss58Address) {
+    // Guard: need recipient and a connected wallet (address works for both providers)
+    if (!recipientAddress || !address) {
       setError('Missing recipient or sender information');
       return;
     }
@@ -51,14 +53,34 @@ export const ConfirmScreen = () => {
     hapticMedium();
 
     try {
-      const { txHash, confirmation } = await writeContract(
-        QFPAY_ROUTER_ADDRESS,
-        ROUTER_ABI,
-        'send',
-        [recipientAddress, recipientAmountWei],
-        null,
-        totalRequiredWei
-      );
+      let txHash: string;
+      let confirmation: Promise<{ confirmed: boolean; error?: string }>;
+
+      if (providerType === 'evm') {
+        // ── MetaMask path: viem writeContract ──
+        const { evmWriteContract } = await import('../utils/evmContractCall');
+        const result = await evmWriteContract(
+          QFPAY_ROUTER_ADDRESS,
+          ROUTER_ABI,
+          'send',
+          [recipientAddress, recipientAmountWei],
+          totalRequiredWei
+        );
+        txHash = result.txHash;
+        confirmation = result.confirmation;
+      } else {
+        // ── Substrate path: PAPI writeContract (unchanged) ──
+        const result = await writeContract(
+          QFPAY_ROUTER_ADDRESS,
+          ROUTER_ABI,
+          'send',
+          [recipientAddress, recipientAmountWei],
+          null,
+          totalRequiredWei
+        );
+        txHash = result.txHash;
+        confirmation = result.confirmation;
+      }
 
       // Brief checkmark flash before transitioning
       setButtonState('confirmed');
@@ -77,8 +99,15 @@ export const ConfirmScreen = () => {
     } catch (err: any) {
       setButtonState('idle');
       const msg = err?.message || 'Transaction failed';
+
       if (isRetryableError(msg)) {
         showToast('warning', RETRY_MESSAGE_SHORT);
+        goBackToAmount();
+      } else if (msg.includes('not connected') || msg.includes('reconnect')) {
+        showToast('error', 'Wallet connection lost. Please disconnect and reconnect.');
+        goBackToAmount();
+      } else if (msg.includes('switch MetaMask') || msg.includes('QF Network')) {
+        showToast('error', 'Please switch MetaMask to QF Network.');
         goBackToAmount();
       } else {
         showToast('error', msg);

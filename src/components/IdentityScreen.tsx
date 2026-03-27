@@ -11,17 +11,19 @@ import { Skeleton } from './ui/Skeleton';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export const IdentityScreen = () => {
-  const { qnsName, address, ss58Address, avatarUrl } = useWalletStore();
+  const { qnsName, address, ss58Address, avatarUrl, providerType } = useWalletStore();
   const { goToRecipient } = usePaymentStore();
   const [balance, setBalance] = useState<bigint | null>(null);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (ss58Address) {
-      getQFBalance(ss58Address).then(setBalance);
+    // getQFBalance already handles both SS58 and 0x addresses internally
+    const addr = ss58Address || address;
+    if (addr) {
+      getQFBalance(addr).then(setBalance);
     }
-  }, [ss58Address]);
+  }, [ss58Address, address]);
 
   const hasQNS = !!qnsName;
 

@@ -2,10 +2,10 @@ import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Shield, Loader2 } from 'lucide-react';
 import { useWalletStore } from '../stores/walletStore';
-import { EASE_OUT_EXPO, SCALE_IN } from '../lib/animations';
+import { EASE_OUT_EXPO } from '../lib/animations';
 
-// Inline SVG wallet icons — no external dependencies
-// Talisman — their hand/spirit mark on lime-green (#D5FF5C) background
+// ─── Inline SVG wallet icons ───
+
 const TalismanIcon = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect width="28" height="28" rx="8" fill="#D5FF5C" />
@@ -20,7 +20,6 @@ const TalismanIcon = () => (
   </svg>
 );
 
-// SubWallet — their gradient shield/S mark
 const SubWalletIcon = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect width="28" height="28" rx="8" fill="url(#sw-grad)" />
@@ -38,6 +37,32 @@ const SubWalletIcon = () => (
   </svg>
 );
 
+const MetaMaskIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="28" height="28" rx="8" fill="#1A1A2E" />
+    <path d="M21.5 7L15.4 11.5l1.1-2.8L21.5 7z" fill="#E2761B" stroke="#E2761B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M6.5 7l6 4.6-1-2.9L6.5 7z" fill="#E4761B" stroke="#E4761B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19.2 17.8l-1.6 2.5 3.5 1-.9-3.5h-1z" fill="#E4761B" stroke="#E4761B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M7.8 17.8l-.9 3.5 3.5-1-1.6-2.5h-1z" fill="#E4761B" stroke="#E4761B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10.2 12.8l-1.3 2 4.5.2-.2-4.9-3 2.7z" fill="#E4761B" stroke="#E4761B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M17.8 12.8l-3.1-2.8-.1 5 4.5-.2-1.3-2z" fill="#E4761B" stroke="#E4761B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10.4 20.3l2.7-1.3-2.3-1.8-.4 3.1z" fill="#E4761B" stroke="#E4761B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14.9 19l2.7 1.3-.4-3.1-2.3 1.8z" fill="#E4761B" stroke="#E4761B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M17.6 20.3l-2.7-1.3.2 1.7v.7l2.5-1.1z" fill="#D7C1B3" stroke="#D7C1B3" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10.4 20.3l2.5 1.1v-.7l.2-1.7-2.7 1.3z" fill="#D7C1B3" stroke="#D7C1B3" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M13 16.2l-2.2-.7 1.6-.7.6 1.4z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M15 16.2l.6-1.4 1.6.7-2.2.7z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10.4 20.3l.4-2.5h-1l.6 2.5z" fill="#CD6116" stroke="#CD6116" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M17.2 17.8l.4 2.5.6-2.5h-1z" fill="#CD6116" stroke="#CD6116" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19.1 14.8l-4.5.2.4 1.2.6-1.4 1.6.7 1.9-.7z" fill="#CD6116" stroke="#CD6116" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10.8 15.5l1.6-.7.6 1.4.4-1.2-4.5-.2 1.9.7z" fill="#CD6116" stroke="#CD6116" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M8.9 14.8l2 1.9-.1-.7-1.9-1.2z" fill="#E4751F" stroke="#E4751F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M17.2 16l-.1.7 2-1.9-1.9 1.2z" fill="#E4751F" stroke="#E4751F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M13.4 15l-.4 1.2 1 3.1.2-2.3-0.8-2z" fill="#F6851B" stroke="#F6851B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M15 15l-.8 2 .2 2.3 1-3.1L15 15z" fill="#F6851B" stroke="#F6851B" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export const WalletModal = () => {
   const {
     showWalletModal,
@@ -45,6 +70,7 @@ export const WalletModal = () => {
     connecting,
     walletError,
     connectWallet,
+    connectMetaMask,
     clearWalletError,
   } = useWalletStore();
 
@@ -71,9 +97,13 @@ export const WalletModal = () => {
     };
   }, [showWalletModal, setShowWalletModal]);
 
-  const handleWalletSelect = async (walletType: 'talisman' | 'subwallet') => {
+  const handleWalletSelect = async (walletType: 'talisman' | 'subwallet' | 'metamask') => {
     clearWalletError();
-    await connectWallet(walletType);
+    if (walletType === 'metamask') {
+      await connectMetaMask();
+    } else {
+      await connectWallet(walletType);
+    }
   };
 
   return (
@@ -114,7 +144,7 @@ export const WalletModal = () => {
 
             {/* Value prop */}
             <p className="font-satoshi text-sm text-qfpay-text-secondary mb-6">
-              Connect a Substrate wallet to send payments using your .qf name.
+              Connect your wallet to send payments using your .qf name.
             </p>
 
             {/* Error */}
@@ -156,8 +186,24 @@ export const WalletModal = () => {
             {/* Wallet buttons */}
             <div className="space-y-2.5">
               {[
-                { type: 'talisman' as const, name: 'Talisman', icon: <TalismanIcon />, description: 'Polkadot & Ethereum' },
-                { type: 'subwallet' as const, name: 'SubWallet', icon: <SubWalletIcon />, description: 'Multi-chain' },
+                {
+                  type: 'talisman' as const,
+                  name: 'Talisman',
+                  icon: <TalismanIcon />,
+                  description: 'Polkadot & Ethereum',
+                },
+                {
+                  type: 'subwallet' as const,
+                  name: 'SubWallet',
+                  icon: <SubWalletIcon />,
+                  description: 'Multi-chain',
+                },
+                {
+                  type: 'metamask' as const,
+                  name: 'MetaMask',
+                  icon: <MetaMaskIcon />,
+                  description: 'EVM wallet',
+                },
               ].map((wallet) => (
                 <motion.button
                   key={wallet.type}
