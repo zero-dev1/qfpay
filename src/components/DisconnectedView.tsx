@@ -38,16 +38,30 @@ export const DisconnectedView = () => {
         </motion.div>
 
         {/* Tagline — the hero moment */}
-        {/* Each word enters separately for typographic weight */}
+        {/* Line 1 — arrives with physical weight */}
         <motion.div className="mb-4" variants={staggerChild}>
-          <h1 className="font-clash font-bold text-[clamp(2.5rem,8vw,5.5rem)] leading-[0.95] tracking-tight text-qfpay-text-primary">
+          <motion.h1
+            className="font-clash font-bold text-[clamp(2.5rem,8vw,5.5rem)] leading-[0.95] text-qfpay-text-primary"
+            initial={{ opacity: 0, scale: 1.04, letterSpacing: '0.02em' }}
+            animate={{ opacity: 1, scale: 1, letterSpacing: '-0.02em' }}
+            transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
+          >
             Instant money.
-          </h1>
+          </motion.h1>
         </motion.div>
+
+        {/* Line 2 — "name." has a blue color wipe reveal */}
         <motion.div className="mb-8" variants={staggerChild}>
           <h1 className="font-clash font-bold text-[clamp(2.5rem,8vw,5.5rem)] leading-[0.95] tracking-tight">
             <span className="text-qfpay-text-primary">Just a </span>
-            <span className="text-qfpay-blue">name.</span>
+            <motion.span
+              className="text-qfpay-blue inline-block"
+              initial={{ clipPath: 'inset(0 100% 0 0)' }}
+              animate={{ clipPath: 'inset(0 0% 0 0)' }}
+              transition={{ delay: 0.3, duration: 0.6, ease: EASE_OUT_EXPO }}
+            >
+              name.
+            </motion.span>
           </h1>
         </motion.div>
 

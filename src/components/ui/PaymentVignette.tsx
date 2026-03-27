@@ -70,7 +70,35 @@ export const PaymentVignette = () => {
 
       {/* Animated amount traveling */}
       <div className="relative flex-1 flex items-center justify-center min-w-[60px] sm:min-w-[80px]">
-        <div className="absolute inset-y-1/2 left-0 right-0 h-px bg-qfpay-border" />
+        {/* Network line — static base + animated draw during send */}
+        <svg
+          className="absolute inset-y-1/2 left-0 right-0 h-px"
+          style={{ top: '50%', transform: 'translateY(-50%)' }}
+          preserveAspectRatio="none"
+          viewBox="0 0 100 1"
+        >
+          {/* Static base line */}
+          <line
+            x1="0" y1="0.5" x2="100" y2="0.5"
+            stroke="currentColor"
+            className="text-qfpay-border"
+            strokeWidth="1"
+            vectorEffect="non-scaling-stroke"
+          />
+          {/* Animated draw line — only during sending */}
+          {phase === 'sending' && (
+            <motion.line
+              x1="0" y1="0.5" x2="100" y2="0.5"
+              stroke="currentColor"
+              className="text-qfpay-blue"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.6, 0.3] }}
+              transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
+            />
+          )}
+        </svg>
 
         <AnimatePresence mode="wait">
           {phase === 'sending' && (

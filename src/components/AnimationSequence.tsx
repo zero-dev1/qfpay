@@ -78,12 +78,16 @@ export const AnimationSequence = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
           >
-            {/* Crimson atmospheric overlay — pulses and fades with the phase */}
+            {/* Crimson atmospheric overlay — single breath: inhale→hold→exhale */}
             <motion.div
               className="fixed inset-0 pointer-events-none z-0"
               initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.8, 0.6, 0.3] }}
-              transition={{ duration: 1.8, times: [0, 0.2, 0.5, 1], ease: 'easeOut' }}
+              animate={{ opacity: [0, 0.7, 0.5, 0.15, 0] }}
+              transition={{
+                duration: 1.8,
+                times: [0, 0.22, 0.4, 0.7, 1],
+                ease: 'easeOut',
+              }}
               style={{
                 background:
                   'radial-gradient(ellipse 70% 60% at 50% 55%, rgba(185, 28, 28, 0.25) 0%, rgba(185, 28, 28, 0.08) 40%, transparent 70%)',
@@ -98,13 +102,14 @@ export const AnimationSequence = () => {
               />
             )}
 
-            {/* Burn amount — dissolves with blur and vertical drift */}
+            {/* Burn amount — dissolves with blur, vertical drift, and heat shimmer */}
             <motion.div className="relative z-10">
               <motion.h1
                 className="font-clash font-bold text-7xl sm:text-8xl md:text-9xl text-white mb-3"
                 animate={{
                   opacity: [1, 1, 0.2],
                   y: [0, 0, -20],
+                  x: [0, 1, -1, 0.5, -0.5, 0, 0],
                   filter: ['blur(0px)', 'blur(0px)', 'blur(6px)'],
                   scale: [1, 1, 0.97],
                 }}
@@ -112,6 +117,11 @@ export const AnimationSequence = () => {
                   duration: 1.8,
                   times: [0, 0.4, 1],
                   ease: 'easeIn',
+                  x: {
+                    duration: 0.6,
+                    times: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 1],
+                    ease: 'easeInOut',
+                  },
                 }}
               >
                 {formatQF(burnAmountWei)} <span className="text-white/40">QF</span>
@@ -189,18 +199,18 @@ export const AnimationSequence = () => {
                   transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
                 />
 
-                {/* Amount badge — enters from left, pulses at center */}
+                {/* Amount badge — enters from left, hovers, then travels to recipient */}
                 <motion.div
                   className="relative z-10 px-5 py-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10"
                   initial={{ opacity: 0, scale: 0.8, x: -40 }}
                   animate={{
-                    opacity: [0, 1, 1, 1],
-                    scale: [0.8, 1.05, 1, 1],
-                    x: [-40, 0, 0, 40],
+                    opacity: [0, 1, 1, 1, 1],
+                    scale: [0.8, 1.05, 1, 1, 0.95],
+                    x: [-40, 0, 0, 0, 40],
                   }}
                   transition={{
                     duration: 2.0,
-                    times: [0, 0.25, 0.6, 1],
+                    times: [0, 0.2, 0.35, 0.55, 1],
                     ease: EASE_OUT_EXPO,
                   }}
                 >
@@ -211,52 +221,72 @@ export const AnimationSequence = () => {
                 </motion.div>
               </motion.div>
 
-              {/* Recipient identity */}
+              {/* Recipient identity — with impact ring */}
               <motion.div
                 className="flex flex-col items-center gap-2 flex-shrink-0"
                 initial={{ opacity: 0.3, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.6, duration: 0.5, ease: EASE_OUT_EXPO }}
               >
-                {recipientAvatar ? (
+                <div className="relative">
+                  {/* Impact ring — expands when funds "arrive" */}
                   <motion.div
-                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-white/20"
+                    className="absolute inset-0 rounded-full"
+                    initial={{ boxShadow: '0 0 0 0px rgba(0, 209, 121, 0)' }}
                     animate={{
-                      borderColor: [
-                        'rgba(255,255,255,0.2)',
-                        'rgba(255,255,255,0.2)',
-                        'rgba(0, 209, 121, 0.5)',
+                      boxShadow: [
+                        '0 0 0 0px rgba(0, 209, 121, 0)',
+                        '0 0 0 0px rgba(0, 209, 121, 0)',
+                        '0 0 0 8px rgba(0, 209, 121, 0.3)',
+                        '0 0 0 12px rgba(0, 209, 121, 0)',
                       ],
                     }}
-                    transition={{ duration: 2.0, times: [0, 0.7, 1] }}
-                  >
-                    <img
-                      src={recipientAvatar}
-                      alt={recipientName || ''}
-                      className="w-full h-full object-cover"
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center"
-                    animate={{
-                      borderColor: [
-                        'rgba(255,255,255,0.2)',
-                        'rgba(255,255,255,0.2)',
-                        'rgba(0, 209, 121, 0.5)',
-                      ],
+                    transition={{
+                      duration: 2.0,
+                      times: [0, 0.65, 0.8, 1],
+                      ease: 'easeOut',
                     }}
-                    transition={{ duration: 2.0, times: [0, 0.7, 1] }}
-                  >
-                    <span className="font-clash font-bold text-xl text-white">
-                      {recipientName
-                        ? recipientName[0].toUpperCase()
-                        : recipientAddress
-                          ? recipientAddress.slice(2, 4).toUpperCase()
-                          : '?'}
-                    </span>
-                  </motion.div>
-                )}
+                  />
+                  {recipientAvatar ? (
+                    <motion.div
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-white/20"
+                      animate={{
+                        borderColor: [
+                          'rgba(255,255,255,0.2)',
+                          'rgba(255,255,255,0.2)',
+                          'rgba(0, 209, 121, 0.5)',
+                        ],
+                      }}
+                      transition={{ duration: 2.0, times: [0, 0.7, 1] }}
+                    >
+                      <img
+                        src={recipientAvatar}
+                        alt={recipientName || ''}
+                        className="w-full h-full object-cover"
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center"
+                      animate={{
+                        borderColor: [
+                          'rgba(255,255,255,0.2)',
+                          'rgba(255,255,255,0.2)',
+                          'rgba(0, 209, 121, 0.5)',
+                        ],
+                      }}
+                      transition={{ duration: 2.0, times: [0, 0.7, 1] }}
+                    >
+                      <span className="font-clash font-bold text-xl text-white">
+                        {recipientName
+                          ? recipientName[0].toUpperCase()
+                          : recipientAddress
+                            ? recipientAddress.slice(2, 4).toUpperCase()
+                            : '?'}
+                      </span>
+                    </motion.div>
+                  )}
+                </div>
                 <span className="font-satoshi text-xs text-white/50 max-w-[80px] truncate">
                   {displayRecipient}
                 </span>
@@ -299,14 +329,24 @@ export const AnimationSequence = () => {
                 damping: 14,
               }}
             >
-              {/* Glow behind */}
+              {/* Completion pulse — radiates outward from checkmark */}
               <motion.div
-                className="absolute -inset-4 rounded-full"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                className="absolute rounded-full"
+                style={{ inset: '-16px' }}
                 initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1.2, opacity: [0, 0.8, 0.3] }}
-                transition={{ delay: 0.2, duration: 0.8 }}
-              />
+                animate={{
+                  scale: [0, 1, 2.5],
+                  opacity: [0, 0.25, 0],
+                }}
+                transition={{
+                  delay: 0.85,
+                  duration: 0.8,
+                  times: [0, 0.3, 1],
+                  ease: 'easeOut',
+                }}
+              >
+                <div className="w-full h-full rounded-full bg-white/10" />
+              </motion.div>
 
               {/* SVG ring + checkmark */}
               <svg
@@ -342,12 +382,12 @@ export const AnimationSequence = () => {
               </svg>
             </motion.div>
 
-            {/* "Payment sent" — lands with weight */}
+            {/* "Payment sent" — lands with weight and tracking compression */}
             <motion.h2
               className="font-clash font-bold text-4xl sm:text-5xl text-white mb-6"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9, duration: 0.5, ease: EASE_OUT_EXPO }}
+              initial={{ opacity: 0, y: 12, letterSpacing: '0.05em' }}
+              animate={{ opacity: 1, y: 0, letterSpacing: '-0.02em' }}
+              transition={{ delay: 0.9, duration: 0.6, ease: EASE_OUT_EXPO }}
             >
               Payment sent
             </motion.h2>

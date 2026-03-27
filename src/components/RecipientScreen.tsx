@@ -264,9 +264,16 @@ export const RecipientScreen = () => {
           className="h-px mt-4 mx-auto"
           style={{ maxWidth: '80%' }}
           animate={{
-            backgroundColor: error ? '#E5484D' : resolved ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)',
+            backgroundColor: error
+              ? '#E5484D'
+              : resolved
+                ? ['rgba(0,64,255,0.8)', 'rgba(255,255,255,0.9)']
+                : 'rgba(255,255,255,0.15)',
           }}
-          transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+          transition={{
+            duration: resolved && !error ? 0.6 : 0.3,
+            ease: EASE_OUT_EXPO,
+          }}
         />
 
         {/* ── RESOLVED IDENTITY CARD ── */}
@@ -277,12 +284,12 @@ export const RecipientScreen = () => {
             {resolved && recipientName && !error && (
               <motion.div
                 className="flex items-center justify-center gap-3 mt-6"
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+                transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
               >
-                {/* Recipient avatar — THE product moment */}
+                {/* Recipient avatar — THE product moment — spring overshoot */}
                 <div className="relative">
                   {recipientAvatar ? (
                     <motion.div
@@ -292,7 +299,7 @@ export const RecipientScreen = () => {
                         scale: avatarLoaded ? 1 : 0,
                         opacity: avatarLoaded ? 1 : 0,
                       }}
-                      transition={EASE_SPRING}
+                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                     >
                       <img
                         src={recipientAvatar}
@@ -306,7 +313,7 @@ export const RecipientScreen = () => {
                       className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={EASE_SPRING}
+                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                     >
                       <span className="font-clash font-semibold text-sm text-white">
                         {recipientName[0].toUpperCase()}
@@ -315,12 +322,12 @@ export const RecipientScreen = () => {
                   )}
                 </div>
 
-                {/* Resolved name with .qf badge */}
+                {/* Name slides in from behind the avatar */}
                 <motion.div
                   className="flex items-center gap-1.5"
-                  initial={{ opacity: 0, x: -8 }}
+                  initial={{ opacity: 0, x: -16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1, duration: 0.3, ease: EASE_OUT_EXPO }}
+                  transition={{ delay: 0.15, duration: 0.35, ease: EASE_OUT_EXPO }}
                 >
                   <span className="font-satoshi font-medium text-white text-base">
                     {recipientName}

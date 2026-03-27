@@ -1,7 +1,14 @@
 import { memo } from 'react';
+import { motion } from 'framer-motion';
 import { BRAND_BLUE_RGB } from '../../lib/colors';
+import { useMouseParallax } from '../../hooks/useMouseParallax';
 
 export const HeroBackground = memo(() => {
+  // Each orb gets a different parallax strength for depth
+  const orb1 = useMouseParallax(20);   // closest — moves most
+  const orb2 = useMouseParallax(-15);  // opposite direction — depth contrast
+  const orb3 = useMouseParallax(10);   // subtle middle layer
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {/* Base gradient — radial from center-top */}
@@ -12,8 +19,8 @@ export const HeroBackground = memo(() => {
         }}
       />
 
-      {/* Orb 1 — top-left, slow float + pulse */}
-      <div
+      {/* Orb 1 — top-left, parallax + CSS float */}
+      <motion.div
         className="absolute w-[600px] h-[600px] rounded-full"
         style={{
           top: '-20%',
@@ -22,11 +29,13 @@ export const HeroBackground = memo(() => {
           filter: 'blur(80px)',
           animation: 'float-1 20s ease-in-out infinite, pulse-glow 6s ease-in-out infinite',
           willChange: 'transform',
+          x: orb1.x,
+          y: orb1.y,
         }}
       />
 
-      {/* Orb 2 — bottom-right, offset timing */}
-      <div
+      {/* Orb 2 — bottom-right, opposite parallax */}
+      <motion.div
         className="absolute w-[500px] h-[500px] rounded-full"
         style={{
           bottom: '-15%',
@@ -35,11 +44,13 @@ export const HeroBackground = memo(() => {
           filter: 'blur(80px)',
           animation: 'float-2 25s ease-in-out infinite',
           willChange: 'transform',
+          x: orb2.x,
+          y: orb2.y,
         }}
       />
 
-      {/* Orb 3 — center, subtle depth layer */}
-      <div
+      {/* Orb 3 — center, subtle */}
+      <motion.div
         className="absolute w-[400px] h-[400px] rounded-full"
         style={{
           top: '30%',
@@ -48,10 +59,12 @@ export const HeroBackground = memo(() => {
           filter: 'blur(100px)',
           animation: 'float-1 30s ease-in-out infinite reverse',
           willChange: 'transform',
+          x: orb3.x,
+          y: orb3.y,
         }}
       />
 
-      {/* Noise texture — bumped to 0.04 for perceptible grain */}
+      {/* Noise texture */}
       <div
         className="absolute inset-0 opacity-[0.04]"
         style={{

@@ -121,18 +121,14 @@ export const AmountScreen = () => {
           <span className="font-clash font-bold text-3xl sm:text-4xl text-white/30">QF</span>
         </div>
 
-        {/* Quick amounts — tactile pill design */}
+        {/* Quick amounts — animated pill selector */}
         <div className="flex justify-center gap-2.5 mt-8">
           {QUICK_AMOUNTS.map((amount, i) => {
             const isSelected = amountInput === amount.toString();
             return (
               <motion.button
                 key={amount}
-                className={`relative px-5 py-2.5 rounded-full text-sm font-satoshi font-medium transition-colors focus-ring ${
-                  isSelected
-                    ? 'bg-white text-[#0040FF]'
-                    : 'bg-white/[0.06] text-white/50 hover:bg-white/[0.1] hover:text-white/80'
-                }`}
+                className="relative px-5 py-2.5 rounded-full text-sm font-satoshi font-medium transition-colors focus-ring"
                 onClick={() => setAmountInput(amount.toString())}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -143,7 +139,23 @@ export const AmountScreen = () => {
                 }}
                 whileTap={{ scale: 0.95 }}
               >
-                {amount}
+                {/* Animated background indicator — morphs between pills */}
+                {isSelected && (
+                  <motion.div
+                    className="absolute inset-0 bg-white rounded-full"
+                    layoutId="pill-highlight"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span
+                  className={`relative z-10 transition-colors duration-200 ${
+                    isSelected
+                      ? 'text-[#0040FF]'
+                      : 'text-white/50 hover:text-white/80'
+                  }`}
+                >
+                  {amount}
+                </span>
               </motion.button>
             );
           })}

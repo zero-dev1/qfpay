@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, ArrowLeft, Flame, ArrowDown } from 'lucide-react';
+import { Loader2, ArrowLeft, Flame, ArrowDown, Check } from 'lucide-react';
+import { useState } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
 import { formatQF } from '../utils/qfpay';
@@ -26,6 +27,7 @@ export const ConfirmScreen = () => {
     setError,
   } = usePaymentStore();
 
+  const [buttonState, setButtonState] = useState<'idle' | 'signing' | 'confirmed'>('idle');
   const isBroadcasting = phase === 'broadcasting';
   const displayRecipient = recipientName
     ? `${recipientName}.qf` 
@@ -41,6 +43,7 @@ export const ConfirmScreen = () => {
       return;
     }
 
+    setButtonState('signing');
     setBroadcasting();
 
     // Haptic feedback
@@ -58,6 +61,10 @@ export const ConfirmScreen = () => {
         totalRequiredWei
       );
 
+      // Brief checkmark flash before transitioning
+      setButtonState('confirmed');
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
       startAnimation(txHash);
 
       const fallbackTimer = setTimeout(() => {
@@ -69,6 +76,7 @@ export const ConfirmScreen = () => {
         setConfirmation(confirmed, error);
       });
     } catch (err: any) {
+      setButtonState('idle');
       const msg = err?.message || 'Transaction failed';
       if (isRetryableError(msg)) {
         showToast('warning', RETRY_MESSAGE_SHORT);
@@ -223,18 +231,49 @@ export const ConfirmScreen = () => {
           <motion.button
             className="w-full bg-white text-[#0040FF] font-satoshi font-semibold text-lg py-4 rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 focus-ring"
             onClick={handleConfirm}
-            disabled={isBroadcasting}
-            whileHover={!isBroadcasting ? { scale: 1.01, boxShadow: '0 0 30px rgba(255, 255, 255, 0.15)' } : undefined}
-            whileTap={!isBroadcasting ? { scale: 0.98 } : undefined}
+            disabled={buttonState !== 'idle'}
+            whileHover={buttonState === 'idle' ? { scale: 1.01, boxShadow: '0 0 30px rgba(255, 255, 255, 0.15)' } : undefined}
+            whileTap={buttonState === 'idle' ? { scale: 0.98 } : undefined}
           >
-            {isBroadcasting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Signing...
-              </>
-            ) : (
-              <>Send {formatQF(recipientAmountWei)} QF</>
-            )}
+            <AnimatePresence mode="wait">
+              {buttonState === 'idle' && (
+                <motion.span
+                  key="idle"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  Send {formatQF(recipientAmountWei)} QF
+                </motion.span>
+              )}
+              {buttonState === 'signing' && (
+                <motion.span
+                  key="signing"
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Signing...
+                </motion.span>
+              )}
+              {buttonState === 'confirmed' && (
+                <motion.span
+                  key="confirmed"
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                >
+                  <Check className="w-5 h-5" />
+                  Sent
+                </motion.span>
+              )}
+            </AnimatePresence>
           </motion.button>
         </motion.div>
       </motion.div>
