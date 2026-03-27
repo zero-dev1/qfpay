@@ -4,9 +4,9 @@ import { BRAND_BLUE_RGB } from '../../lib/colors';
 import { useMouseParallax } from '../../hooks/useMouseParallax';
 
 export const HeroBackground = memo(() => {
-  const orb1 = useMouseParallax(20);
-  const orb2 = useMouseParallax(-15);
-  const orb3 = useMouseParallax(10);
+  const orb1 = useMouseParallax(80);   // was 20 — needs to be large to read through blur
+  const orb2 = useMouseParallax(-60);  // was -15 — opposite direction for depth
+  const orb3 = useMouseParallax(35);   // was 10 — mid layer
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -31,7 +31,7 @@ export const HeroBackground = memo(() => {
         <motion.div
           className="w-[600px] h-[600px] rounded-full"
           style={{
-            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.16) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.20) 0%, transparent 70%)`,
             filter: 'blur(80px)',
             x: orb1.x,
             y: orb1.y,
@@ -52,7 +52,7 @@ export const HeroBackground = memo(() => {
         <motion.div
           className="w-[500px] h-[500px] rounded-full"
           style={{
-            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.10) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.14) 0%, transparent 70%)`,
             filter: 'blur(80px)',
             x: orb2.x,
             y: orb2.y,
@@ -73,7 +73,7 @@ export const HeroBackground = memo(() => {
         <motion.div
           className="w-[400px] h-[400px] rounded-full"
           style={{
-            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.06) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.08) 0%, transparent 70%)`,
             filter: 'blur(100px)',
             x: orb3.x,
             y: orb3.y,
