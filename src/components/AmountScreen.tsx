@@ -56,13 +56,15 @@ export const AmountScreen = () => {
     >
       {/* Back button */}
       <motion.button
-        className="fixed top-6 left-6 z-50 p-2.5 rounded-full hover:bg-white/10 transition-colors focus-ring"
+        className="fixed top-5 left-5 z-50 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] backdrop-blur-md transition-all duration-200 focus-ring"
         onClick={goBackToRecipient}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2, ease: EASE_OUT_EXPO }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
       >
-        <ArrowLeft className="w-5 h-5 text-white/50 hover:text-white" />
+        <ArrowLeft className="w-[18px] h-[18px] text-white/40" />
       </motion.button>
 
       {/* Recipient identity — with avatar if available */}

@@ -13,8 +13,8 @@ export function useMouseParallax(strength: number = 1): ParallaxValues {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  // Spring config: heavy damping = laggy, organic feel (not 1:1 cursor tracking)
-  const springConfig = { stiffness: 50, damping: 30, mass: 1 };
+  // Looser spring: orbs drift noticeably, settle slowly (organic, not twitchy)
+  const springConfig = { stiffness: 30, damping: 20, mass: 1.5 };
   const x = useSpring(useTransform(mouseX, (v) => v * strength), springConfig);
   const y = useSpring(useTransform(mouseY, (v) => v * strength), springConfig);
 

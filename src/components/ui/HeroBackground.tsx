@@ -4,9 +4,10 @@ import { BRAND_BLUE_RGB } from '../../lib/colors';
 import { useMouseParallax } from '../../hooks/useMouseParallax';
 
 export const HeroBackground = memo(() => {
-  const orb1 = useMouseParallax(80);   // was 20 — needs to be large to read through blur
-  const orb2 = useMouseParallax(-60);  // was -15 — opposite direction for depth
-  const orb3 = useMouseParallax(35);   // was 10 — mid layer
+  const orb1 = useMouseParallax(60);    // primary — most visible, most movement
+  const orb2 = useMouseParallax(-40);   // counter-direction for depth
+  const orb3 = useMouseParallax(25);    // subtle mid-layer
+  const accent = useMouseParallax(100);  // small bright accent — makes parallax undeniable
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -18,54 +19,54 @@ export const HeroBackground = memo(() => {
         }}
       />
 
-      {/* Orb 1 — top-left */}
+      {/* Orb 1 — upper area, INSIDE viewport so parallax is visible */}
       <div
         className="absolute"
         style={{
-          top: '-20%',
-          left: '-10%',
+          top: '-5%',
+          left: '5%',
           animation: 'float-1 20s ease-in-out infinite, pulse-glow 6s ease-in-out infinite',
-          willChange: 'transform',
-        }}
-      >
-        <motion.div
-          className="w-[600px] h-[600px] rounded-full"
-          style={{
-            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.20) 0%, transparent 70%)`,
-            filter: 'blur(80px)',
-            x: orb1.x,
-            y: orb1.y,
-          }}
-        />
-      </div>
-
-      {/* Orb 2 — bottom-right */}
-      <div
-        className="absolute"
-        style={{
-          bottom: '-15%',
-          right: '-10%',
-          animation: 'float-2 25s ease-in-out infinite',
           willChange: 'transform',
         }}
       >
         <motion.div
           className="w-[500px] h-[500px] rounded-full"
           style={{
-            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.14) 0%, transparent 70%)`,
-            filter: 'blur(80px)',
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.22) 0%, rgba(${BRAND_BLUE_RGB}, 0.06) 50%, transparent 70%)`,
+            filter: 'blur(60px)',
+            x: orb1.x,
+            y: orb1.y,
+          }}
+        />
+      </div>
+
+      {/* Orb 2 — lower-right, moves opposite direction */}
+      <div
+        className="absolute"
+        style={{
+          bottom: '5%',
+          right: '0%',
+          animation: 'float-2 25s ease-in-out infinite',
+          willChange: 'transform',
+        }}
+      >
+        <motion.div
+          className="w-[450px] h-[450px] rounded-full"
+          style={{
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.15) 0%, transparent 65%)`,
+            filter: 'blur(70px)',
             x: orb2.x,
             y: orb2.y,
           }}
         />
       </div>
 
-      {/* Orb 3 — center, subtle */}
+      {/* Orb 3 — center, large and soft */}
       <div
         className="absolute"
         style={{
-          top: '30%',
-          left: '30%',
+          top: '25%',
+          left: '25%',
           animation: 'float-1 30s ease-in-out infinite reverse',
           willChange: 'transform',
         }}
@@ -77,6 +78,25 @@ export const HeroBackground = memo(() => {
             filter: 'blur(100px)',
             x: orb3.x,
             y: orb3.y,
+          }}
+        />
+      </div>
+
+      {/* Accent glow — smaller, sharper, most reactive. This is what makes parallax visible. */}
+      <div
+        className="absolute"
+        style={{
+          top: '15%',
+          left: '40%',
+        }}
+      >
+        <motion.div
+          className="w-[200px] h-[200px] rounded-full"
+          style={{
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.12) 0%, transparent 70%)`,
+            filter: 'blur(40px)',
+            x: accent.x,
+            y: accent.y,
           }}
         />
       </div>
