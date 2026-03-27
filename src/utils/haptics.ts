@@ -1,36 +1,42 @@
 // src/utils/haptics.ts
-// Haptic feedback patterns for QFPay's payment flow.
-// Uses navigator.vibrate() — Android only. iOS Safari does not support this API.
-// All calls are no-ops on unsupported devices.
+// Cross-platform haptic feedback using web-haptics.
+// Works on Android (Vibration API) and iOS 18+ (Safari switch checkbox hack).
+// Silent no-op on unsupported platforms.
 
-const canVibrate = typeof navigator !== 'undefined' && 'vibrate' in navigator;
+import { WebHaptics } from 'web-haptics';
+
+const haptics = new WebHaptics();
 
 /** Light tap — pills, back buttons, navigation */
 export function hapticLight() {
-  if (canVibrate) navigator.vibrate(8);
+  haptics.trigger('light');
 }
 
 /** Medium tap — CTA presses, commitments */
 export function hapticMedium() {
-  if (canVibrate) navigator.vibrate(15);
+  haptics.trigger('medium');
 }
 
 /** Double pulse — recipient .qf resolution celebration */
 export function hapticDouble() {
-  if (canVibrate) navigator.vibrate([12, 80, 12]);
+  haptics.trigger('success');
 }
 
 /** Burn rumble — destruction feel, pairs with burn sound */
 export function hapticBurn() {
-  if (canVibrate) navigator.vibrate([20, 100, 15, 100, 25]);
+  haptics.trigger([
+    { duration: 20 },
+    { delay: 100, duration: 15 },
+    { delay: 100, duration: 25, intensity: 1 },
+  ]);
 }
 
 /** Impact — crisp hit when amount badge arrives at recipient */
 export function hapticImpact() {
-  if (canVibrate) navigator.vibrate(25);
+  haptics.trigger('heavy');
 }
 
 /** Success — triple pulse, completion/resolution */
 export function hapticSuccess() {
-  if (canVibrate) navigator.vibrate([15, 60, 15, 60, 20]);
+  haptics.trigger('success');
 }
