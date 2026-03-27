@@ -126,17 +126,42 @@ export const IdentityScreen = () => {
             </span>
           </motion.div>
 
-          {/* Send Payment button */}
-          <motion.button
-            className="group flex items-center gap-3 bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-10 py-4 rounded-2xl transition-all focus-ring"
-            onClick={goToRecipient}
-            variants={staggerChild}
-            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgb(0 64 255 / 0.25)' }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Send className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-            Send Payment
-          </motion.button>
+          {/* Send Payment button with breathing glow */}
+          <motion.div className="relative" variants={staggerChild}>
+            {/* Breathing ambient glow */}
+            <motion.div
+              className="absolute -inset-1 bg-qfpay-blue/20 rounded-2xl blur-xl"
+              animate={
+                reducedMotion
+                  ? { opacity: 0.5 }
+                  : {
+                      opacity: [0.4, 0.7, 0.4],
+                      scale: [1, 1.05, 1],
+                    }
+              }
+              transition={
+                reducedMotion
+                  ? undefined
+                  : {
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }
+              }
+            />
+            <motion.button
+              className="relative group flex items-center gap-3 bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-10 py-4 rounded-2xl transition-all focus-ring"
+              onClick={goToRecipient}
+              whileHover={{
+                scale: 1.02,
+                boxShadow: '0 0 40px rgba(0, 64, 255, 0.3), 0 0 80px rgba(0, 64, 255, 0.1)',
+              }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Send className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+              Send Payment
+            </motion.button>
+          </motion.div>
         </motion.div>
       ) : (
         /* ─── No QNS Gate ─── */

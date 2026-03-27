@@ -1,73 +1,41 @@
-# React + TypeScript + Vite
+# QFPay
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Instant money. Just a name.**
 
-Currently, two official plugins are available:
+QFPay is the flagship payment dApp for [QF Network](https://qfnetwork.org). Send QF tokens to anyone using their `.qf` name — no wallet addresses, no complexity.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Built to match Awwwards-level design standards with a cinematic payment flow: burn → send → success.
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 19** + TypeScript + Vite
+- **Framer Motion** — physics-based animations, `layoutId` shared elements, spring interactions
+- **Tailwind CSS** — design tokens, responsive, dark-first
+- **Zustand** — minimal state management (wallet + payment phase machine)
+- **Polkadot API (PAPI)** — QF Network substrate integration
+- **Web Audio API** — synthesized UI sounds (no external audio files)
+- **PWA** — installable, offline-aware, safe-area aware
 
-## Expanding the ESLint configuration
+## Design
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Typography: Clash Display + Satoshi + JetBrains Mono  
+Color: Sapphire Blue `#0040FF` on blue-tinted dark `#060A14`  
+Motion: 3 shared easing curves, `prefers-reduced-motion` respected throughout
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Features
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- **`.qf` name resolution** — type a name, see their avatar, send payment
+- **Deflationary burn** — 0.1% burned per transaction, visualized with ember particles
+- **Cinematic animation sequence** — burn → send → success with sound design
+- **Mouse-reactive hero** — parallax orbs respond to cursor on desktop
+- **Wallet persistence** — reconnects automatically via Talisman or SubWallet
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Links
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- **QFPay**: [qfpay.xyz](https://qfpay.xyz)
+- **QNS (Name Service)**: [dotqf.xyz](https://dotqf.xyz)
+- **QF Network**: [qfnetwork.org](https://qfnetwork.org)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Built with obsessive attention to detail for QF Network.

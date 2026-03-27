@@ -4,9 +4,11 @@ import logoMark from '../assets/logo-mark.svg';
 import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
 import { HeroBackground } from './ui/HeroBackground';
 import { PaymentVignette } from './ui/PaymentVignette';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export const DisconnectedView = () => {
   const { setShowWalletModal } = useWalletStore();
+  const reducedMotion = useReducedMotion();
 
   return (
     <motion.div
@@ -80,14 +82,36 @@ export const DisconnectedView = () => {
           <PaymentVignette />
         </motion.div>
 
-        {/* Connect button with glow + border animation */}
+        {/* Connect button with breathing glow */}
         <motion.div className="relative" variants={staggerChild}>
-          {/* Ambient glow behind button */}
-          <div className="absolute -inset-1 bg-qfpay-blue/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+          {/* Breathing ambient glow — gentle invitation pulse */}
+          <motion.div
+            className="absolute -inset-1 bg-qfpay-blue/20 rounded-2xl blur-xl"
+            animate={
+              reducedMotion
+                ? { opacity: 0.5 }
+                : {
+                    opacity: [0.4, 0.7, 0.4],
+                    scale: [1, 1.05, 1],
+                  }
+            }
+            transition={
+              reducedMotion
+                ? undefined
+                : {
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }
+            }
+          />
           <motion.button
             className="relative bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-14 py-4 rounded-2xl transition-colors focus-ring"
             onClick={() => setShowWalletModal(true)}
-            whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0, 64, 255, 0.3)' }}
+            whileHover={{
+              scale: 1.02,
+              boxShadow: '0 0 40px rgba(0, 64, 255, 0.3), 0 0 80px rgba(0, 64, 255, 0.1)',
+            }}
             whileTap={{ scale: 0.98 }}
           >
             Connect Wallet
