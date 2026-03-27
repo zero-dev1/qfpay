@@ -4,14 +4,13 @@ import { BRAND_BLUE_RGB } from '../../lib/colors';
 import { useMouseParallax } from '../../hooks/useMouseParallax';
 
 export const HeroBackground = memo(() => {
-  // Each orb gets a different parallax strength for depth
-  const orb1 = useMouseParallax(20);   // closest — moves most
-  const orb2 = useMouseParallax(-15);  // opposite direction — depth contrast
-  const orb3 = useMouseParallax(10);   // subtle middle layer
+  const orb1 = useMouseParallax(20);
+  const orb2 = useMouseParallax(-15);
+  const orb3 = useMouseParallax(10);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Base gradient — radial from center-top */}
+      {/* Base gradient */}
       <div
         className="absolute inset-0"
         style={{
@@ -19,50 +18,68 @@ export const HeroBackground = memo(() => {
         }}
       />
 
-      {/* Orb 1 — top-left, parallax + CSS float */}
-      <motion.div
-        className="absolute w-[600px] h-[600px] rounded-full"
+      {/* Orb 1 — top-left */}
+      <div
+        className="absolute"
         style={{
           top: '-20%',
           left: '-10%',
-          background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.16) 0%, transparent 70%)`,
-          filter: 'blur(80px)',
           animation: 'float-1 20s ease-in-out infinite, pulse-glow 6s ease-in-out infinite',
           willChange: 'transform',
-          x: orb1.x,
-          y: orb1.y,
         }}
-      />
+      >
+        <motion.div
+          className="w-[600px] h-[600px] rounded-full"
+          style={{
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.16) 0%, transparent 70%)`,
+            filter: 'blur(80px)',
+            x: orb1.x,
+            y: orb1.y,
+          }}
+        />
+      </div>
 
-      {/* Orb 2 — bottom-right, opposite parallax */}
-      <motion.div
-        className="absolute w-[500px] h-[500px] rounded-full"
+      {/* Orb 2 — bottom-right */}
+      <div
+        className="absolute"
         style={{
           bottom: '-15%',
           right: '-10%',
-          background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.10) 0%, transparent 70%)`,
-          filter: 'blur(80px)',
           animation: 'float-2 25s ease-in-out infinite',
           willChange: 'transform',
-          x: orb2.x,
-          y: orb2.y,
         }}
-      />
+      >
+        <motion.div
+          className="w-[500px] h-[500px] rounded-full"
+          style={{
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.10) 0%, transparent 70%)`,
+            filter: 'blur(80px)',
+            x: orb2.x,
+            y: orb2.y,
+          }}
+        />
+      </div>
 
       {/* Orb 3 — center, subtle */}
-      <motion.div
-        className="absolute w-[400px] h-[400px] rounded-full"
+      <div
+        className="absolute"
         style={{
           top: '30%',
           left: '30%',
-          background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.06) 0%, transparent 70%)`,
-          filter: 'blur(100px)',
           animation: 'float-1 30s ease-in-out infinite reverse',
           willChange: 'transform',
-          x: orb3.x,
-          y: orb3.y,
         }}
-      />
+      >
+        <motion.div
+          className="w-[400px] h-[400px] rounded-full"
+          style={{
+            background: `radial-gradient(circle, rgba(${BRAND_BLUE_RGB}, 0.06) 0%, transparent 70%)`,
+            filter: 'blur(100px)',
+            x: orb3.x,
+            y: orb3.y,
+          }}
+        />
+      </div>
 
       {/* Noise texture */}
       <div
