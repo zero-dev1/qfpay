@@ -58,6 +58,9 @@ module.exports = {
         'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
         shimmer: 'shimmer 2s ease-in-out infinite',
       },
+      screens: {
+        'xs': '480px',
+      },
     },
   },
   plugins: [],

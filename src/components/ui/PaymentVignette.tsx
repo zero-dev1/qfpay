@@ -8,10 +8,48 @@ const SCENARIOS = [
   { from: 'satoshi', to: 'memechi', amount: '25' },
 ];
 
+// Unique gradient pairs per persona — premium feel, not random
+const AVATAR_GRADIENTS: Record<string, [string, string]> = {
+  alice:   ['#6366F1', '#A78BFA'],  // indigo → violet
+  bob:     ['#F59E0B', '#F97316'],  // amber → orange
+  dev:     ['#0040FF', '#38BDF8'],  // brand blue → sky
+  spin:    ['#10B981', '#34D399'],  // emerald pair
+  satoshi: ['#8B5CF6', '#EC4899'],  // violet → pink
+  memechi: ['#F43F5E', '#FB923C'],  // rose → orange
+};
+
+const DemoAvatar = ({ name, size = 28 }: { name: string; size?: number }) => {
+  const [c1, c2] = AVATAR_GRADIENTS[name] || ['#6366F1', '#A78BFA'];
+  const gradId = `av-${name}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 28 28" className="flex-shrink-0 rounded-full">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+          <stop stopColor={c1} />
+          <stop offset="1" stopColor={c2} />
+        </linearGradient>
+      </defs>
+      <circle cx="14" cy="14" r="14" fill={`url(#${gradId})`} />
+      <text
+        x="14"
+        y="14"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="white"
+        fontFamily="'Clash Display', sans-serif"
+        fontWeight="600"
+        fontSize="11"
+      >
+        {name[0].toUpperCase()}
+      </text>
+    </svg>
+  );
+};
+
 // Phase durations (ms)
-const IDLE_DURATION = 1200;    // was 800 — give users time to read
-const SENDING_DURATION = 1200; // unchanged
-const DONE_DURATION = 2200;    // was 1800 — hold the checkmark longer
+const IDLE_DURATION = 1200;
+const SENDING_DURATION = 1200;
+const DONE_DURATION = 2200;
 
 export const PaymentVignette = () => {
   const [index, setIndex] = useState(0);
@@ -31,14 +69,10 @@ export const PaymentVignette = () => {
     const scheduleNext = () => {
       switch (phase) {
         case 'idle':
-          timerRef.current = setTimeout(() => {
-            setPhase('sending');
-          }, IDLE_DURATION);
+          timerRef.current = setTimeout(() => setPhase('sending'), IDLE_DURATION);
           break;
         case 'sending':
-          timerRef.current = setTimeout(() => {
-            setPhase('done');
-          }, SENDING_DURATION);
+          timerRef.current = setTimeout(() => setPhase('done'), SENDING_DURATION);
           break;
         case 'done':
           timerRef.current = setTimeout(() => {
@@ -48,36 +82,30 @@ export const PaymentVignette = () => {
           break;
       }
     };
-
     scheduleNext();
-
     return clearTimer;
   }, [phase, clearTimer]);
 
   return (
-    <div className="relative flex items-center gap-4 sm:gap-6 px-5 sm:px-6 py-3.5 rounded-2xl border border-qfpay-border bg-qfpay-surface/50 backdrop-blur-sm">
+    <div className="relative flex items-center gap-3 sm:gap-5 px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl border border-qfpay-border bg-qfpay-surface/50 backdrop-blur-sm">
       {/* Sender */}
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-qfpay-blue/15 border border-qfpay-blue/20 flex items-center justify-center flex-shrink-0">
-          <span className="font-clash font-semibold text-[10px] sm:text-xs text-qfpay-blue">
-            {scenario.from[0].toUpperCase()}
-          </span>
-        </div>
-        <span className="font-satoshi text-xs sm:text-sm text-qfpay-text-secondary hidden sm:inline">
-          {scenario.from}<span className="text-qfpay-blue">.qf</span>
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <DemoAvatar name={scenario.from} size={28} />
+        <span className="font-satoshi text-xs sm:text-sm text-qfpay-text-secondary">
+          <span className="hidden xs:inline">{scenario.from}</span>
+          <span className="xs:hidden">{scenario.from.length > 5 ? scenario.from.slice(0, 4) + '…' : scenario.from}</span>
+          <span className="text-qfpay-blue">.qf</span>
         </span>
       </div>
 
       {/* Animated amount traveling */}
-      <div className="relative flex-1 flex items-center justify-center min-w-[60px] sm:min-w-[80px]">
-        {/* Network line — static base + animated draw during send */}
+      <div className="relative flex-1 flex items-center justify-center min-w-[48px] sm:min-w-[80px]">
         <svg
           className="absolute inset-y-1/2 left-0 right-0 h-px"
           style={{ top: '50%', transform: 'translateY(-50%)' }}
           preserveAspectRatio="none"
           viewBox="0 0 100 1"
         >
-          {/* Static base line */}
           <line
             x1="0" y1="0.5" x2="100" y2="0.5"
             stroke="currentColor"
@@ -85,7 +113,6 @@ export const PaymentVignette = () => {
             strokeWidth="1"
             vectorEffect="non-scaling-stroke"
           />
-          {/* Animated draw line — only during sending */}
           {phase === 'sending' && (
             <motion.line
               x1="0" y1="0.5" x2="100" y2="0.5"
@@ -122,12 +149,7 @@ export const PaymentVignette = () => {
               exit={{ opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             >
-              <svg
-                className="w-4 h-4 text-qfpay-green"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-4 h-4 text-qfpay-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <motion.path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -148,18 +170,8 @@ export const PaymentVignette = () => {
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
             >
-              <svg
-                className="w-3.5 h-3.5 sm:w-4 sm:h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M14 5l7 7m0 0l-7 7m7-7H3"
-                />
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </motion.div>
           )}
@@ -167,15 +179,13 @@ export const PaymentVignette = () => {
       </div>
 
       {/* Recipient */}
-      <div className="flex items-center gap-2">
-        <span className="font-satoshi text-xs sm:text-sm text-qfpay-text-secondary hidden sm:inline">
-          {scenario.to}<span className="text-qfpay-blue">.qf</span>
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <span className="font-satoshi text-xs sm:text-sm text-qfpay-text-secondary">
+          <span className="hidden xs:inline">{scenario.to}</span>
+          <span className="xs:hidden">{scenario.to.length > 5 ? scenario.to.slice(0, 4) + '…' : scenario.to}</span>
+          <span className="text-qfpay-blue">.qf</span>
         </span>
-        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-qfpay-green/15 border border-qfpay-green/20 flex items-center justify-center flex-shrink-0">
-          <span className="font-clash font-semibold text-[10px] sm:text-xs text-qfpay-green">
-            {scenario.to[0].toUpperCase()}
-          </span>
-        </div>
+        <DemoAvatar name={scenario.to} size={28} />
       </div>
     </div>
   );
