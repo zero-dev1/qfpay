@@ -175,19 +175,23 @@ export const AmountScreen = () => {
           Balance: {formatQF(balance)} QF
         </p>
 
-        {/* Live burn calculation — appears when amount > 0, secondary info */}
+        {/* Live burn calculation — visible and celebrated */}
         <AnimatePresence>
           {amountWei > 0n && !insufficientBalance && (
             <motion.div
-              className="flex items-center gap-1.5 text-white/30"
+              className="flex items-center gap-2 text-orange-300/50"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
             >
-              <Flame className="w-3 h-3" />
+              <Flame className="w-3.5 h-3.5 text-orange-400/60" />
               <span className="font-mono text-xs">
-                {formatQF(burnAmount)} QF burned · {formatQF(recipientAmount)} QF received
+                {formatQF(burnAmount)} QF burned
+              </span>
+              <span className="text-white/15">·</span>
+              <span className="font-mono text-xs text-white/35">
+                {formatQF(recipientAmount)} QF received
               </span>
             </motion.div>
           )}

@@ -91,11 +91,13 @@ export async function getQFBalance(address: string): Promise<bigint> {
 // ─── Formatting ──────────────────────────────────────────────────────
 
 export function formatQF(wei: bigint): string {
+  if (wei === 0n) return '0';
   const qf = Number(wei) / 1e18;
-  if (qf >= 1000) return qf.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  if (qf >= 1) return qf.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  if (qf >= 0.01) return qf.toLocaleString('en-US', { maximumFractionDigits: 4 });
-  return qf.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  if (qf >= 1000) return qf.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (qf >= 1) return qf.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  if (qf >= 0.001) return qf.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  if (qf >= 0.000001) return qf.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  return qf.toExponential(2);
 }
 
 export function truncateAddress(address: string): string {

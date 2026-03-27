@@ -202,23 +202,25 @@ export const ConfirmScreen = () => {
           </div>
         </motion.div>
 
-        {/* Burn breakdown — contained card */}
+        {/* Burn breakdown — celebrated, not hidden */}
         <motion.div
-          className="bg-white/[0.04] rounded-xl border border-white/[0.06] px-4 py-3 mb-8"
+          className="rounded-xl border border-white/[0.06] overflow-hidden mb-8"
           variants={staggerChild}
         >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-white/30" />
-              <span className="font-satoshi text-xs text-white/40">
+          {/* Burn row — warm accent */}
+          <div className="flex items-center justify-between px-4 py-3 bg-orange-500/[0.03] border-b border-white/[0.04]">
+            <div className="flex items-center gap-2">
+              <Flame className="w-3.5 h-3.5 text-orange-400/60" />
+              <span className="font-satoshi text-xs text-orange-300/60">
                 Burn (0.1%)
               </span>
             </div>
-            <span className="font-mono text-xs text-white/50">
+            <span className="font-mono text-xs text-orange-300/50">
               {formatQF(burnAmountWei)} QF
             </span>
           </div>
-          <div className="flex items-center justify-between">
+          {/* Total row */}
+          <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02]">
             <span className="font-satoshi text-xs text-white/40">
               Total deducted
             </span>

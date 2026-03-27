@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
 import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
-import { Send, ExternalLink } from 'lucide-react';
+import { Send, ExternalLink, Flame } from 'lucide-react';
 import logoMarkSvg from '../assets/logo-mark.svg';
 import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
 import { Skeleton } from './ui/Skeleton';
@@ -115,13 +115,13 @@ export const IdentityScreen = () => {
             </AnimatePresence>
           </motion.div>
 
-          {/* Burn stat — ambient */}
+          {/* Burn stat — celebrated, not hidden */}
           <motion.div
-            className="flex items-center gap-2 px-4 py-2 rounded-full border border-qfpay-border bg-qfpay-surface/50 mb-12"
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-full border border-orange-500/[0.08] bg-orange-500/[0.04] mb-12"
             variants={staggerChild}
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-qfpay-burn-bright" />
-            <span className="font-satoshi text-xs text-qfpay-text-secondary">
+            <Flame className="w-3.5 h-3.5 text-orange-400/70" />
+            <span className="font-satoshi text-sm text-orange-300/60">
               0.1% burned per transaction
             </span>
           </motion.div>
