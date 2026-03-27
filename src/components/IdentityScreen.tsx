@@ -5,6 +5,7 @@ import { usePaymentStore } from '../stores/paymentStore';
 import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
 import { Send, ExternalLink, Flame } from 'lucide-react';
 import logoMarkSvg from '../assets/logo-mark.svg';
+import { hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
 import { Skeleton } from './ui/Skeleton';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -151,7 +152,7 @@ export const IdentityScreen = () => {
             />
             <motion.button
               className="relative group flex items-center gap-3 bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-10 py-4 rounded-2xl transition-all focus-ring"
-              onClick={goToRecipient}
+              onClick={() => { hapticMedium(); goToRecipient(); }}
               whileHover={{
                 scale: 1.02,
                 boxShadow: '0 0 40px rgba(0, 64, 255, 0.3), 0 0 80px rgba(0, 64, 255, 0.1)',

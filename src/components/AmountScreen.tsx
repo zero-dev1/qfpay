@@ -6,6 +6,7 @@ import { getQFBalance, formatQF, calculateBurn } from '../utils/qfpay';
 import { parseQFAmount, isValidAmountInput } from '../utils/parseAmount';
 import { GAS_BUFFER } from '../config/contracts';
 import { ArrowRight, ArrowLeft, AlertCircle, Flame } from 'lucide-react';
+import { hapticLight } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 
 export const AmountScreen = () => {
@@ -57,7 +58,7 @@ export const AmountScreen = () => {
       {/* Back button */}
       <motion.button
         className="fixed top-5 left-5 z-50 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] backdrop-blur-md transition-all duration-200 focus-ring"
-        onClick={goBackToRecipient}
+        onClick={() => { hapticLight(); goBackToRecipient(); }}
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2, ease: EASE_OUT_EXPO }}
@@ -131,7 +132,7 @@ export const AmountScreen = () => {
               <motion.button
                 key={amount}
                 className="relative px-5 py-2.5 rounded-full text-sm font-satoshi font-medium transition-colors focus-ring"
-                onClick={() => setAmountInput(amount.toString())}
+                onClick={() => { hapticLight(); setAmountInput(amount.toString()); }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -222,6 +223,7 @@ export const AmountScreen = () => {
           <motion.button
             className="mt-12 flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 transition-all focus-ring"
             onClick={() => {
+              hapticLight();
               setAmount(amountInput, amountWei, burnAmount, recipientAmount, totalRequired);
               goToPreview();
             }}

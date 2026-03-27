@@ -8,6 +8,7 @@ import { writeContract } from '../utils/contractCall';
 import { QFPAY_ROUTER_ADDRESS, ROUTER_ABI } from '../config/contracts';
 import { isRetryableError, RETRY_MESSAGE_SHORT } from '../utils/errorHelpers';
 import { showToast } from './Toast';
+import { hapticLight, hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
 
 export const ConfirmScreen = () => {
@@ -47,9 +48,7 @@ export const ConfirmScreen = () => {
     setBroadcasting();
 
     // Haptic feedback
-    if (navigator.vibrate) {
-      navigator.vibrate(10);
-    }
+    hapticMedium();
 
     try {
       const { txHash, confirmation } = await writeContract(
@@ -101,7 +100,7 @@ export const ConfirmScreen = () => {
         {!isBroadcasting && (
           <motion.button
             className="fixed top-5 left-5 z-50 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] backdrop-blur-md transition-all duration-200 focus-ring"
-            onClick={goBackToAmount}
+            onClick={() => { hapticLight(); goBackToAmount(); }}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}

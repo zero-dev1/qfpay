@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useWalletStore } from '../stores/walletStore';
 import logoMark from '../assets/logo-mark.svg';
+import { hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, staggerContainer, staggerChild } from '../lib/animations';
 import { HeroBackground } from './ui/HeroBackground';
 import { PaymentVignette } from './ui/PaymentVignette';
@@ -107,7 +108,7 @@ export const DisconnectedView = () => {
           />
           <motion.button
             className="relative bg-qfpay-blue hover:bg-qfpay-blue-hover text-white font-satoshi font-semibold text-lg px-14 py-4 rounded-2xl transition-colors focus-ring"
-            onClick={() => setShowWalletModal(true)}
+            onClick={() => { hapticMedium(); setShowWalletModal(true); }}
             whileHover={{
               scale: 1.02,
               boxShadow: '0 0 40px rgba(0, 64, 255, 0.3), 0 0 80px rgba(0, 64, 255, 0.1)',

@@ -4,6 +4,7 @@ import { usePaymentStore } from '../stores/paymentStore';
 import { useWalletStore } from '../stores/walletStore';
 import { formatQF } from '../utils/qfpay';
 import { EmberParticles } from './EmberParticles';
+import { hapticBurn, hapticImpact, hapticSuccess } from '../utils/haptics';
 import { playBurnSound, playSendSound, playSuccessSound } from '../utils/sounds';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -33,20 +34,23 @@ export const AnimationSequence = () => {
 
   const displaySender = senderName ? `${senderName}.qf` : '';
 
-  // Play sounds on phase entry
+  // Sound + haptic on phase entry — paired for multisensory feedback
   useEffect(() => {
-    if (reducedMotion) return; // Skip sounds for reduced-motion users
-    if (phase === 'burn') playBurnSound();
-    if (phase === 'sending') playSendSound();
-    if (phase === 'success') playSuccessSound();
-  }, [phase, reducedMotion]);
-
-  // Haptic on success
-  useEffect(() => {
-    if (phase === 'success' && navigator.vibrate) {
-      navigator.vibrate([10, 50, 10]);
+    if (phase === 'burn') {
+      if (!reducedMotion) playBurnSound();
+      hapticBurn();
     }
-  }, [phase]);
+    if (phase === 'sending') {
+      if (!reducedMotion) playSendSound();
+      // Haptic impact fires delayed — when the badge "arrives" at recipient (~1.4s into the 2.2s phase)
+      const impactTimer = setTimeout(hapticImpact, 1400);
+      return () => clearTimeout(impactTimer);
+    }
+    if (phase === 'success') {
+      if (!reducedMotion) playSuccessSound();
+      hapticSuccess();
+    }
+  }, [phase, reducedMotion]);
 
   // Auto-advance timers — calibrated for emotional pacing
   // Burn: 1800ms (fast enough to feel urgent, long enough to register)

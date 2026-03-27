@@ -5,6 +5,7 @@ import { resolveForward, getAvatar } from '../utils/qfpay';
 import { detectAddressType, ss58ToEvmAddress } from '../utils/address';
 import { useWalletStore } from '../stores/walletStore';
 import { Loader2, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { hapticLight, hapticDouble } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
@@ -145,6 +146,7 @@ export const RecipientScreen = () => {
       setRecipient(resolvedName, resolvedAddress, avatar);
       setResolved(true);
       setError(null);
+      hapticDouble();
     } catch {
       setError('Resolution failed');
       setRecipient(null, null);
@@ -179,7 +181,7 @@ export const RecipientScreen = () => {
       {/* Back button */}
       <motion.button
         className="fixed top-5 left-5 z-50 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] backdrop-blur-md transition-all duration-200 focus-ring"
-        onClick={(e) => { e.stopPropagation(); goBackToIdle(); }}
+        onClick={(e) => { e.stopPropagation(); hapticLight(); goBackToIdle(); }}
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2, ease: EASE_OUT_EXPO }}
@@ -376,6 +378,7 @@ export const RecipientScreen = () => {
             className="mt-14 flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 transition-all focus-ring"
             onClick={(e) => {
               e.stopPropagation();
+              hapticLight();
               goToAmount();
             }}
             initial={{ opacity: 0, y: 24 }}
