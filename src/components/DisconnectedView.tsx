@@ -35,7 +35,7 @@ export const DisconnectedView = () => {
         {/* Tagline line 1 — arrives with physical weight */}
         <motion.div className="mb-4" variants={staggerChild}>
           <motion.h1
-            className="font-clash font-bold text-[clamp(2.5rem,8vw,5.5rem)] leading-[0.95] text-qfpay-text-primary"
+            className="font-clash font-bold text-[clamp(2.5rem,7vw,4.5rem)] leading-[0.95] text-qfpay-text-primary"
             initial={{ opacity: 0, scale: 1.04, letterSpacing: '0.02em' }}
             animate={{ opacity: 1, scale: 1, letterSpacing: '-0.02em' }}
             transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
@@ -45,8 +45,8 @@ export const DisconnectedView = () => {
         </motion.div>
 
         {/* Tagline line 2 — "name." has the blue clip-path reveal */}
-        <motion.div className="mb-10" variants={staggerChild}>
-          <h1 className="font-clash font-bold text-[clamp(2.5rem,8vw,5.5rem)] leading-[0.95] tracking-tight">
+        <motion.div className="mb-14" variants={staggerChild}>
+          <h1 className="font-clash font-bold text-[clamp(2.5rem,7vw,4.5rem)] leading-[0.95] tracking-tight">
             <span className="text-qfpay-text-primary">Just a </span>
             <motion.span
               className="text-qfpay-blue inline-block"
@@ -62,7 +62,7 @@ export const DisconnectedView = () => {
         {/* ═══ THE CEREMONY ═══ */}
         {/* Full-width payment animation — the emotional centerpiece */}
         <motion.div
-          className="w-full mb-10"
+          className="w-full mb-12"
           variants={staggerChild}
         >
           <PaymentCeremony />
