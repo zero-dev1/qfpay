@@ -73,22 +73,26 @@ input:-webkit-autofill:focus {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ─── HeroBackground ambient animations ─── */
-@keyframes float-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -20px) scale(1.05); }
-  66% { transform: translate(-20px, 15px) scale(0.95); }
-}
-
-@keyframes float-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(-25px, 20px) scale(1.05); }
-  66% { transform: translate(20px, -15px) scale(0.95); }
-}
-
 @keyframes pulse-glow {
   0%, 100% { opacity: 0.7; }
   50% { opacity: 1; }
+}
+
+/* ─── Shimmer border rotation ─── */
+@property --shimmer-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes shimmer-rotate {
+  to {
+    --shimmer-angle: 360deg;
+  }
+}
+
+.animate-shimmer-rotate {
+  animation: shimmer-rotate 4s linear infinite;
 }
 
 /* ─── Reduced motion ─── */
