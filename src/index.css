@@ -91,6 +91,26 @@ input:-webkit-autofill:focus {
   }
 }
 
+/* Threshold scene — burn particle drift */
+@keyframes burn-drift {
+  from {
+    opacity: 0.9;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-120px) scale(0.6);
+    filter: blur(2px);
+  }
+}
+
+/* Subtle background breath */
+@keyframes void-breath {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.06; }
+}
+
 .animate-shimmer-rotate {
   animation: shimmer-rotate 4s linear infinite;
 }
