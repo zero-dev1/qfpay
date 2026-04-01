@@ -35,12 +35,12 @@ function ReviewPill({
 
   return (
     <div
-      className="flex items-center gap-3 w-full max-w-sm mx-auto"
+      className="inline-flex items-center gap-3"
       style={{
         background: BG_SURFACE,
         border: '1px solid rgba(255,255,255,0.10)',
         borderRadius: 9999,
-        padding: '10px 16px 10px 10px',
+        padding: '10px 20px 10px 10px',
       }}
     >
       {/* Avatar — 40px */}
@@ -88,10 +88,9 @@ function ReviewPill({
 }
 
 const Divider = () => (
-  <div
-    className="w-full max-w-sm mx-auto my-5"
-    style={{ height: 1, background: 'rgba(255,255,255,0.06)' }}
-  />
+  <div className="flex justify-center my-3">
+    <div style={{ width: 2, height: 32, borderRadius: 1, background: 'rgba(255,255,255,0.08)' }} />
+  </div>
 );
 
 // ─── ConfirmScreen ────────────────────────────────────────────────────────────
@@ -298,6 +297,7 @@ export const ConfirmScreen = () => {
 
         {/* ── Sender pill — delay 0ms ── */}
         <motion.div
+          className="flex justify-center"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0, duration: 0.35, ease: EASE_OUT_EXPO }}
@@ -311,7 +311,7 @@ export const ConfirmScreen = () => {
           />
         </motion.div>
 
-        {/* ── Divider 1 — delay 100ms ── */}
+        {/* ── Connector 1 — delay 100ms ── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -320,23 +320,33 @@ export const ConfirmScreen = () => {
           <Divider />
         </motion.div>
 
-        {/* ── Burn row — centered, no container — delay 150ms ── */}
+        {/* ── Burn pill — delay 150ms ── */}
         <motion.div
-          className="text-center py-2"
+          className="flex justify-center"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.35, ease: EASE_OUT_EXPO }}
         >
-          <span
-            className="font-satoshi font-medium text-base"
-            style={{ color: `${BURN_CRIMSON}cc` }}
+          <div
+            className="inline-flex items-center gap-2"
+            style={{
+              background: 'rgba(185,28,28,0.08)',
+              border: '1px solid rgba(185,28,28,0.25)',
+              borderRadius: 9999,
+              padding: '10px 20px',
+            }}
           >
-            🔥 {formatQF(burnAmountWei)} QF burns{' '}
-            <span style={{ color: `${BURN_CRIMSON}cc` }}>forever</span>
-          </span>
+            <span
+              className="font-satoshi font-medium text-base"
+              style={{ color: `${BURN_CRIMSON}cc` }}
+            >
+              🔥 {formatQF(burnAmountWei)} QF burns{' '}
+              <span style={{ color: `${BURN_CRIMSON}cc` }}>forever</span>
+            </span>
+          </div>
         </motion.div>
 
-        {/* ── Divider 2 — delay 200ms ── */}
+        {/* ── Connector 2 — delay 200ms ── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -347,6 +357,7 @@ export const ConfirmScreen = () => {
 
         {/* ── Recipient pill — delay 250ms ── */}
         <motion.div
+          className="flex justify-center"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.35, ease: EASE_OUT_EXPO }}
@@ -385,13 +396,13 @@ export const ConfirmScreen = () => {
               animate={pulsing ? { scale: [1, 1.04, 0.98, 1] } : { scale: 1 }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
             >
+              {/* Outer wrapper — no overflow:hidden so shimmer border is visible */}
               <motion.div
-                className="relative overflow-hidden"
+                className="relative"
                 style={{
                   width: 'clamp(200px, 60vw, 320px)',
                   height: 56,
                   borderRadius: 100,
-                  background: BRAND_BLUE,
                   cursor: buttonState === 'idle' ? 'pointer' : 'default',
                   userSelect: 'none',
                 }}
@@ -400,10 +411,10 @@ export const ConfirmScreen = () => {
                 onPointerLeave={cancelHold}
                 whileTap={buttonState === 'idle' ? { scale: 0.98 } : undefined}
               >
-                {/* Shimmer border — 4s rotation, heavier than Connect Wallet */}
+                {/* Shimmer border — outside overflow:hidden, so the 1px ring shows */}
                 <div
-                  className="absolute -inset-[1px] overflow-hidden pointer-events-none"
-                  style={{ borderRadius: 100 }}
+                  className="absolute -inset-[1px] pointer-events-none"
+                  style={{ borderRadius: 100, overflow: 'hidden' }}
                 >
                   <div
                     className="w-full h-full animate-shimmer-rotate"
@@ -416,63 +427,69 @@ export const ConfirmScreen = () => {
                   />
                 </div>
 
-                {/* Fill progress — brightens from left */}
-                <motion.div
-                  className="absolute inset-0"
-                  style={{
-                    background: '#2060FF',
-                    transformOrigin: 'left center',
-                    borderRadius: 100,
-                  }}
-                  animate={{ scaleX: holdProgress }}
-                  transition={{ duration: 0.05 }}
-                />
+                {/* Button surface — overflow:hidden clips the fill progress */}
+                <div
+                  className="absolute inset-0 overflow-hidden"
+                  style={{ borderRadius: 100, background: BRAND_BLUE }}
+                >
+                  {/* Fill progress — brightens from left */}
+                  <motion.div
+                    className="absolute inset-0"
+                    style={{
+                      background: '#2060FF',
+                      transformOrigin: 'left center',
+                      borderRadius: 100,
+                    }}
+                    animate={{ scaleX: holdProgress }}
+                    transition={{ duration: 0.05 }}
+                  />
 
-                {/* Label — idle / signing / confirmed */}
-                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                  <AnimatePresence mode="wait">
-                    {buttonState === 'idle' && (
-                      <motion.span
-                        key="idle"
-                        className="font-clash font-bold text-white"
-                        style={{ fontSize: 18, letterSpacing: '-0.02em' }}
-                        initial={{ opacity: 0, y:  4 }}
-                        animate={{ opacity: 1, y:  0 }}
-                        exit={   { opacity: 0, y: -4 }}
-                        transition={{ duration: 0.15 }}
-                      >
-                        Send
-                      </motion.span>
-                    )}
-                    {buttonState === 'signing' && (
-                      <motion.span
-                        key="signing"
-                        className="flex items-center gap-2 font-satoshi font-medium text-white"
-                        style={{ fontSize: 15 }}
-                        initial={{ opacity: 0, y:  4 }}
-                        animate={{ opacity: 1, y:  0 }}
-                        exit={   { opacity: 0, y: -4 }}
-                        transition={{ duration: 0.15 }}
-                      >
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Signing…
-                      </motion.span>
-                    )}
-                    {buttonState === 'confirmed' && (
-                      <motion.span
-                        key="confirmed"
-                        className="flex items-center gap-2 font-satoshi font-medium text-white"
-                        style={{ fontSize: 15 }}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={   { opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      >
-                        <Check className="w-4 h-4" />
-                        Sent
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
+                  {/* Label — idle / signing / confirmed */}
+                  <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                    <AnimatePresence mode="wait">
+                      {buttonState === 'idle' && (
+                        <motion.span
+                          key="idle"
+                          className="font-clash font-bold text-white"
+                          style={{ fontSize: 18, letterSpacing: '-0.02em' }}
+                          initial={{ opacity: 0, y:  4 }}
+                          animate={{ opacity: 1, y:  0 }}
+                          exit={   { opacity: 0, y: -4 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          Send
+                        </motion.span>
+                      )}
+                      {buttonState === 'signing' && (
+                        <motion.span
+                          key="signing"
+                          className="flex items-center gap-2 font-satoshi font-medium text-white"
+                          style={{ fontSize: 15 }}
+                          initial={{ opacity: 0, y:  4 }}
+                          animate={{ opacity: 1, y:  0 }}
+                          exit={   { opacity: 0, y: -4 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Signing…
+                        </motion.span>
+                      )}
+                      {buttonState === 'confirmed' && (
+                        <motion.span
+                          key="confirmed"
+                          className="flex items-center gap-2 font-satoshi font-medium text-white"
+                          style={{ fontSize: 15 }}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={   { opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        >
+                          <Check className="w-4 h-4" />
+                          Sent
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>

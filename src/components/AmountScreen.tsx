@@ -9,7 +9,7 @@ import { hapticLight, hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { BRAND_BLUE, BG_SURFACE, BURN_CRIMSON } from '../lib/colors';
 
-// ─── Keyboard height — used for container bottom padding ─────────────────────
+// ─── Keyboard height — used for container bottom padding on mobile ────────────
 const KEYBOARD_HEIGHT = 268;
 
 // ─── Custom keyboard layout ───────────────────────────────────────────────────
@@ -29,9 +29,17 @@ export const AmountScreen = () => {
   const [amountInput, setAmountInput] = useState('');
   const [balance,     setBalance]     = useState<bigint>(0n);
   const [waveKey,     setWaveKey]     = useState(0);
+  const [isDesktop,   setIsDesktop]   = useState(() => window.innerWidth >= 1024);
 
   const prevCanContinueRef = useRef(false);
   const longPressRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Desktop detection — reactive to resize ──
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // ── Load balance ──
   useEffect(() => {
@@ -119,7 +127,7 @@ export const AmountScreen = () => {
   return (
     <motion.div
       className="flex flex-col items-center min-h-screen px-6 pt-12 relative"
-      style={{ paddingBottom: KEYBOARD_HEIGHT }}
+      style={{ paddingBottom: isDesktop ? 40 : KEYBOARD_HEIGHT }}
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -194,17 +202,40 @@ export const AmountScreen = () => {
 
       {/* ── Amount display ── */}
       <div className="flex items-baseline justify-center gap-3 mb-4 w-full">
-        <span
-          className="font-clash font-bold text-center"
-          style={{
-            fontSize: 'clamp(3rem, 10vw, 6rem)',
-            letterSpacing: '-0.02em',
-            color: amountInput ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.20)',
-            minWidth: 40,
-          }}
-        >
-          {amountInput || '0'}
-        </span>
+        {isDesktop ? (
+          <input
+            autoFocus
+            type="text"
+            inputMode="decimal"
+            value={amountInput}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '' || isValidAmountInput(val)) setAmountInput(val);
+            }}
+            placeholder="0"
+            className="font-clash font-bold text-center bg-transparent outline-none border-none"
+            style={{
+              fontSize: 'clamp(3rem, 10vw, 6rem)',
+              letterSpacing: '-0.02em',
+              color: amountInput ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.20)',
+              width: '100%',
+              maxWidth: 400,
+              caretColor: BRAND_BLUE,
+            }}
+          />
+        ) : (
+          <span
+            className="font-clash font-bold text-center"
+            style={{
+              fontSize: 'clamp(3rem, 10vw, 6rem)',
+              letterSpacing: '-0.02em',
+              color: amountInput ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.20)',
+              minWidth: 40,
+            }}
+          >
+            {amountInput || '0'}
+          </span>
+        )}
         <span
           className="font-clash font-bold"
           style={{ fontSize: 'clamp(1.25rem, 3vw, 2rem)', color: `${BRAND_BLUE}cc` }}
@@ -288,44 +319,46 @@ export const AmountScreen = () => {
         )}
       </AnimatePresence>
 
-      {/* ── Custom keyboard — fixed bottom, full width ── */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 px-3 pt-3 pb-safe-bottom"
-        style={{
-          background: 'rgba(6,10,20,0.92)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
-        }}
-      >
-        {/* Digit rows 1–9 */}
-        {DIGIT_ROWS.map((row) => (
-          <div key={row.join('')} className="flex gap-2 mb-2">
-            {row.map((key) => (
-              <KeyButton key={key} label={key} onTap={() => handleKey(key)} />
-            ))}
-          </div>
-        ))}
+      {/* ── Custom keyboard — mobile only, fixed bottom, full width ── */}
+      {!isDesktop && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 px-3 pt-3 pb-safe-bottom"
+          style={{
+            background: 'rgba(6,10,20,0.92)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
+          }}
+        >
+          {/* Digit rows 1–9 */}
+          {DIGIT_ROWS.map((row) => (
+            <div key={row.join('')} className="flex gap-2 mb-2">
+              {row.map((key) => (
+                <KeyButton key={key} label={key} onTap={() => handleKey(key)} />
+              ))}
+            </div>
+          ))}
 
-        {/* Bottom row: . 0 MAX ⌫ */}
-        <div className="flex gap-2">
-          <KeyButton label="." onTap={() => handleKey('.')} />
-          <KeyButton label="0" onTap={() => handleKey('0')} />
-          <KeyButton
-            label="MAX"
-            onTap={() => handleKey('MAX')}
-            variant="sapphire"
-            disabled={maxSendableWei <= 0n}
-          />
-          <KeyButton
-            label="⌫"
-            onTap={() => { handleKey('⌫'); }}
-            onLongPressStart={startLongPress}
-            onLongPressEnd={cancelLongPress}
-          />
+          {/* Bottom row: . 0 MAX ⌫ */}
+          <div className="flex gap-2">
+            <KeyButton label="." onTap={() => handleKey('.')} />
+            <KeyButton label="0" onTap={() => handleKey('0')} />
+            <KeyButton
+              label="MAX"
+              onTap={() => handleKey('MAX')}
+              variant="sapphire"
+              disabled={maxSendableWei <= 0n}
+            />
+            <KeyButton
+              label="⌫"
+              onTap={() => { handleKey('⌫'); }}
+              onLongPressStart={startLongPress}
+              onLongPressEnd={cancelLongPress}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </motion.div>
   );
 };

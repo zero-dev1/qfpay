@@ -66,19 +66,20 @@ export function ConnectedPill() {
   return (
     <div ref={dropdownRef} className="relative">
 
-      {/* ── Pill body — tap toggles balance reveal ── */}
+      {/* ── Pill body — tap toggles dropdown ── */}
       <motion.div
         className="flex items-center gap-2 cursor-pointer select-none"
         style={{
-          background: BG_SURFACE,
-          border: '1px solid rgba(255,255,255,0.10)',
+          background: '#060A14',
+          border: '1px solid rgba(0,64,255,0.15)',
           borderRadius: 9999,
           padding: '5px 12px 5px 5px',
+          boxShadow: '0 2px 12px rgba(0,64,255,0.2)',
         }}
         whileTap={{ scale: 0.97 }}
         onClick={() => {
           hapticLight();
-          setBalanceVisible(v => !v);
+          setDropdownOpen(v => !v);
         }}
       >
         {/* Avatar — 40px per spec */}
@@ -119,31 +120,10 @@ export function ConnectedPill() {
           )}
         </span>
 
-        {/* Square separator dot */}
-        <div style={{
-          width: 4, height: 4,
-          borderRadius: 1,
-          background: 'rgba(255,255,255,0.30)',
-          flexShrink: 0,
-        }} />
-
-        {/* Balance — JetBrains Mono, BRAND_BLUE 80%, instant character swap */}
-        <span
-          className="font-mono text-xs whitespace-nowrap"
-          style={{ color: `${BRAND_BLUE}cc` }}
-        >
-          {displayBalance}
-        </span>
-
-        {/* Chevron — tap opens dropdown, does NOT toggle balance */}
+        {/* Chevron — decorative, dropdown opened by pill onClick */}
         <span
           className="text-xs ml-0.5 select-none"
           style={{ color: 'rgba(255,255,255,0.25)' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            hapticLight();
-            setDropdownOpen(v => !v);
-          }}
         >
           ▾
         </span>
@@ -155,19 +135,36 @@ export function ConnectedPill() {
           <motion.div
             className="absolute right-0 mt-2 min-w-[168px] z-50"
             style={{
-              background: 'rgba(12,16,25,0.85)',
+              background: 'linear-gradient(to bottom, rgba(12,16,25,0.98), rgba(6,10,20,1))',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              borderRadius: 12,
+              border: '1px solid rgba(0,64,255,0.12)',
+              borderRadius: 16,
               padding: 4,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.45), inset 0 -1px 0 rgba(0,64,255,0.2)',
             }}
             initial={{ opacity: 0, scale: 0.95, y: -6 }}
             animate={{ opacity: 1, scale: 1,    y: 0  }}
             exit={   { opacity: 0, scale: 0.95, y: -6 }}
             transition={{ type: 'spring', damping: 24, stiffness: 320, duration: 0.15 }}
           >
+            {/* Balance — tap to reveal / mask */}
+            <div
+              className="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer select-none"
+              style={{ color: 'rgba(255,255,255,0.60)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onClick={() => { hapticLight(); setBalanceVisible(v => !v); }}
+            >
+              <span className="font-satoshi text-sm">Balance</span>
+              <span className="font-mono text-xs" style={{ color: `${BRAND_BLUE}cc` }}>
+                {displayBalance}
+              </span>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 8px' }} />
+
             {/* Copy address */}
             <button
               className="w-full text-left px-3 py-2.5 rounded-lg font-satoshi text-sm transition-colors"

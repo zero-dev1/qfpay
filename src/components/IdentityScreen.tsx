@@ -61,23 +61,16 @@ export const IdentityScreen = () => {
     return () => clearInterval(id);
   }, [balance]);
 
-  // ── Ceremony sequencing — plays once per session ──
+  // ── Ceremony sequencing — plays every time the screen mounts ──
   // Timing: blooming 0–600ms · naming 600–1200ms · contracting 1200–1800ms · settled 1800ms+
   useEffect(() => {
     if (reducedMotion || !hasQNS) {
       setCeremonyPhase('settled');
       return;
     }
-    if (sessionStorage.getItem('qfpay-ceremony-played')) {
-      setCeremonyPhase('settled');
-      return;
-    }
     const t1 = setTimeout(() => setCeremonyPhase('naming'),      600);
     const t2 = setTimeout(() => setCeremonyPhase('contracting'), 1200);
-    const t3 = setTimeout(() => {
-      setCeremonyPhase('settled');
-      sessionStorage.setItem('qfpay-ceremony-played', 'true');
-    }, 1800);
+    const t3 = setTimeout(() => setCeremonyPhase('settled'),     1800);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -111,12 +104,12 @@ export const IdentityScreen = () => {
         animRef.current = setTimeout(tick, DELETE_SPEED);
       }
     };
-    animRef.current = setTimeout(tick, 800);
+    tick();
     return () => { if (animRef.current) clearTimeout(animRef.current); };
   }, [ceremonyPhase, hasQNS, reducedMotion]);
 
   const handleScreenTap = () => {
-    if (ceremonyPhase !== 'settled' || !hasQNS) return;
+    if (!hasQNS) return;
     hapticMedium();
     goToRecipient();
   };
