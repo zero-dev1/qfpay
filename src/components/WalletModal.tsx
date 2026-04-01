@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useWalletStore } from '../stores/walletStore';
 import { EASE_OUT_EXPO } from '../lib/animations';
+import logoMarkSvg from '../assets/logo-mark.svg';
 
 // ─── Inline SVG wallet icons ───
 
@@ -65,118 +66,146 @@ const MetaMaskIcon = () => (
 
 export const WalletModal = () => {
   const {
-    showWalletModal,
-    setShowWalletModal,
-    connecting,
-    walletError,
-    connectWallet,
-    connectMetaMask,
-    clearWalletError,
-  } = useWalletStore();
+    showWalletModal, setShowWalletModal, connecting, walletError,
+    connectWallet, connectMetaMask, clearWalletError,
+  } = useWalletStore()
 
-  const modalRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null)
 
+  // Click-outside and Escape handlers — UNCHANGED
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        setShowWalletModal(false);
+        setShowWalletModal(false)
       }
-    };
+    }
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowWalletModal(false);
-    };
-
+      if (event.key === 'Escape') setShowWalletModal(false)
+    }
     if (showWalletModal) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
     }
-
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [showWalletModal, setShowWalletModal]);
-
-  const handleWalletSelect = async (walletType: 'talisman' | 'subwallet' | 'metamask') => {
-    clearWalletError();
-    if (walletType === 'metamask') {
-      await connectMetaMask();
-    } else {
-      await connectWallet(walletType);
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
     }
-  };
+  }, [showWalletModal, setShowWalletModal])
+
+  // handleWalletSelect — UNCHANGED
+  const handleWalletSelect = async (
+    walletType: 'talisman' | 'subwallet' | 'metamask'
+  ) => {
+    clearWalletError()
+    if (walletType === 'metamask') {
+      await connectMetaMask()
+    } else {
+      await connectWallet(walletType)
+    }
+  }
 
   return (
     <AnimatePresence>
       {showWalletModal && (
         <motion.div
+          className="fixed inset-0 z-50 flex items-end sm:items-center
+                     justify-center px-4 pb-safe-bottom sm:pb-0"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4 pb-4 sm:pb-0"
           onClick={() => setShowWalletModal(false)}
         >
           <motion.div
             ref={modalRef}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="w-full max-w-sm"
+            style={{
+              background: 'rgba(12,16,25,0.95)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 24,
+              padding: '28px 24px 24px',
+              boxShadow:
+                '0 0 0 1px rgba(0,64,255,0.08), 0 24px 64px rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+            }}
+            initial={{ opacity: 0, scale: 0.94, y: 24 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            exit={{ opacity: 0, scale: 0.94, y: 24 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="bg-qfpay-surface rounded-2xl sm:rounded-2xl border border-qfpay-border p-6 w-full max-w-md shadow-2xl shadow-black/40"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-clash font-semibold text-xl text-qfpay-text-primary">
-                Connect Wallet
-              </h2>
-              <button
-                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-qfpay-text-secondary hover:text-qfpay-text-primary focus-ring"
-                onClick={() => {
-                  setShowWalletModal(false);
-                  clearWalletError();
-                }}
+            <div className="flex flex-col items-center text-center mb-7">
+              <img
+                src={logoMarkSvg}
+                alt="QFPay"
+                className="w-7 h-7 mb-5 opacity-60"
+              />
+              <h2
+                className="font-clash font-bold text-2xl text-white mb-2"
+                style={{ letterSpacing: '-0.02em' }}
               >
-                <X size={18} />
-              </button>
+                Connect your wallet
+              </h2>
+              <p className="font-satoshi text-sm"
+                style={{ color: 'rgba(255,255,255,0.4)' }}>
+                You'll need a{' '}
+                <span style={{ color: '#0040FF' }}>.qf</span>
+                {' '}name to send payments
+              </p>
             </div>
-
-            {/* Value prop */}
-            <p className="font-satoshi text-sm text-qfpay-text-secondary mb-6">
-              Connect your wallet to send payments using your .qf name.
-            </p>
 
             {/* Error */}
             <AnimatePresence>
               {walletError && (
                 <motion.div
                   initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                  animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
                   exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-3 bg-qfpay-error/8 border border-qfpay-error/15 rounded-xl">
-                    <p className="text-qfpay-error text-sm font-satoshi">{walletError}</p>
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 12,
+                    background: 'rgba(185,28,28,0.06)',
+                    border: '1px solid rgba(185,28,28,0.15)',
+                  }}>
+                    <p className="font-satoshi text-sm"
+                      style={{ color: '#B91C1C' }}>
+                      {walletError}
+                    </p>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Connecting state */}
+            {/* Connecting */}
             <AnimatePresence>
               {connecting && (
                 <motion.div
                   initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                  animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
                   exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-3 bg-qfpay-blue/8 border border-qfpay-blue/15 rounded-xl flex items-center gap-3">
-                    <Loader2 className="w-4 h-4 text-qfpay-blue animate-spin flex-shrink-0" />
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 12,
+                    background: 'rgba(0,64,255,0.06)',
+                    border: '1px solid rgba(0,64,255,0.12)',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}>
+                    <Loader2 className="w-4 h-4 animate-spin flex-shrink-0"
+                      style={{ color: '#0040FF' }} />
                     <div>
-                      <p className="text-qfpay-blue text-sm font-satoshi font-medium">Waiting for authorization...</p>
-                      <p className="text-qfpay-text-muted text-xs font-satoshi mt-0.5">Check your wallet extension</p>
+                      <p className="font-satoshi text-sm font-medium"
+                        style={{ color: '#0040FF' }}>
+                        Waiting for authorization...
+                      </p>
+                      <p className="font-satoshi text-xs mt-0.5"
+                        style={{ color: 'rgba(255,255,255,0.3)' }}>
+                        Check your wallet extension
+                      </p>
                     </div>
                   </div>
                 </motion.div>
@@ -184,54 +213,67 @@ export const WalletModal = () => {
             </AnimatePresence>
 
             {/* Wallet buttons */}
-            <div className="space-y-2.5">
+            <div className="flex flex-col gap-2">
               {[
-                {
-                  type: 'talisman' as const,
-                  name: 'Talisman',
-                  icon: <TalismanIcon />,
-                  description: 'Polkadot & Ethereum',
-                },
-                {
-                  type: 'subwallet' as const,
-                  name: 'SubWallet',
-                  icon: <SubWalletIcon />,
-                  description: 'Multi-chain',
-                },
-                {
-                  type: 'metamask' as const,
-                  name: 'MetaMask',
-                  icon: <MetaMaskIcon />,
-                  description: 'EVM wallet',
-                },
-              ].map((wallet) => (
+                { type: 'talisman' as const, name: 'Talisman',
+                  icon: <TalismanIcon />, description: 'Polkadot & Ethereum' },
+                { type: 'subwallet' as const, name: 'SubWallet',
+                  icon: <SubWalletIcon />, description: 'Multi-chain' },
+                { type: 'metamask' as const, name: 'MetaMask',
+                  icon: <MetaMaskIcon />, description: 'EVM wallet' },
+              ].map((wallet, i) => (
                 <motion.button
                   key={wallet.type}
-                  className="w-full flex items-center gap-4 p-4 bg-white/[0.03] hover:bg-white/[0.06] border border-qfpay-border hover:border-qfpay-border-hover rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-ring"
+                  className="w-full flex items-center gap-4 focus-ring"
+                  style={{
+                    padding: '14px 16px', borderRadius: 14, textAlign: 'left',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    cursor: connecting ? 'not-allowed' : 'pointer',
+                  }}
                   onClick={() => handleWalletSelect(wallet.type)}
                   disabled={connecting}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: connecting ? 0.5 : 1, y: 0 }}
+                  transition={{
+                    delay: i * 0.06, duration: 0.3, ease: EASE_OUT_EXPO,
+                  }}
+                  whileHover={!connecting ? {
+                    backgroundColor: 'rgba(255,255,255,0.07)',
+                    borderColor: 'rgba(0,64,255,0.25)',
+                    y: -1,
+                  } : undefined}
+                  whileTap={!connecting ? { scale: 0.99 } : undefined}
                 >
-                  <div className="flex-shrink-0 w-7 h-7">{wallet.icon}</div>
-                  <div className="text-left">
-                    <p className="font-satoshi font-medium text-qfpay-text-primary text-sm">{wallet.name}</p>
-                    <p className="font-satoshi text-xs text-qfpay-text-muted">{wallet.description}</p>
+                  <div className="flex-shrink-0">{wallet.icon}</div>
+                  <div>
+                    <p className="font-satoshi font-medium text-sm"
+                      style={{ color: 'rgba(255,255,255,0.9)' }}>
+                      {wallet.name}
+                    </p>
+                    <p className="font-satoshi text-xs mt-0.5"
+                      style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      {wallet.description}
+                    </p>
                   </div>
                 </motion.button>
               ))}
             </div>
 
             {/* Footer */}
-            <div className="mt-5 pt-4 border-t border-qfpay-border flex items-center justify-center gap-1.5">
-              <Shield className="w-3 h-3 text-qfpay-text-muted" />
-              <p className="font-satoshi text-xs text-qfpay-text-muted">
+            <div
+              className="flex items-center justify-center mt-6 pt-5"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <p className="font-satoshi text-xs"
+                style={{ color: 'rgba(255,255,255,0.25)' }}>
                 Don't have a wallet?{' '}
                 <a
                   href="https://talisman.xyz"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-qfpay-blue hover:underline"
+                  className="hover:underline"
+                  style={{ color: '#0040FF' }}
                 >
                   Get Talisman
                 </a>
@@ -241,5 +283,5 @@ export const WalletModal = () => {
         </motion.div>
       )}
     </AnimatePresence>
-  );
-};
+  )
+}

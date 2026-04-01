@@ -1,5 +1,4 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EASE_OUT_EXPO } from '../lib/animations';
 
@@ -78,81 +77,118 @@ export const showToast = (
   toastStore.addToast({ type, message, duration });
 };
 
-// Type-specific icon component
-const ToastIcon = ({ type }: { type: ToastMessage['type'] }) => {
+const getToastStyles = (type: ToastMessage['type']) => {
   switch (type) {
     case 'success':
-      return <CheckCircle className="w-4 h-4 flex-shrink-0" />;
+      return {
+        background: 'rgba(0,209,121,0.06)',
+        border: '1px solid rgba(0,209,121,0.15)',
+        color: '#00D179',
+      }
     case 'warning':
-      return <AlertTriangle className="w-4 h-4 flex-shrink-0" />;
+      return {
+        background: 'rgba(245,158,11,0.06)',
+        border: '1px solid rgba(245,158,11,0.15)',
+        color: '#F59E0B',
+      }
     case 'error':
-      return <XCircle className="w-4 h-4 flex-shrink-0" />;
+      return {
+        background: 'rgba(185,28,28,0.06)',
+        border: '1px solid rgba(185,28,28,0.15)',
+        color: '#B91C1C',
+      }
   }
-};
+}
 
-// Type-specific styles
-const getToastStyles = (type: ToastMessage['type']): string => {
-  switch (type) {
-    case 'success':
-      return 'bg-qfpay-green/[0.08] border-qfpay-green/[0.15] text-qfpay-green';
-    case 'warning':
-      return 'bg-qfpay-warning/[0.08] border-qfpay-warning/[0.15] text-qfpay-warning';
-    case 'error':
-      return 'bg-qfpay-error/[0.08] border-qfpay-error/[0.15] text-qfpay-error';
+const ToastIcon = ({ type }: { type: ToastMessage['type'] }) => {
+  const s = getToastStyles(type)
+  if (type === 'success') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0 mt-0.5">
+        <motion.path
+          d="M3 8L6.5 11.5L13 4.5"
+          stroke={s.color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+        />
+      </svg>
+    )
   }
-};
+  return (
+    <span
+      className="flex-shrink-0 font-mono text-base leading-none mt-0.5"
+      style={{ color: s.color }}
+    >
+      {type === 'warning' ? '!' : '×'}
+    </span>
+  )
+}
 
 export const Toast = () => {
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   useEffect(() => {
-    const updateToasts = () => setToasts([...toastStore.toasts]);
-
-    listeners.add(updateToasts);
-    updateToasts();
-
-    return () => {
-      listeners.delete(updateToasts);
-    };
-  }, []);
+    const updateToasts = () => setToasts([...toastStore.toasts])
+    listeners.add(updateToasts)
+    updateToasts()
+    return () => { listeners.delete(updateToasts) }
+  }, [])
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] space-y-2 pointer-events-none w-full max-w-md px-4">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2
+                    pointer-events-none w-full max-w-md px-4">
       <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{
-              opacity: 0,
-              y: toast.type === 'error' ? 12 : -12,
-              scale: 0.96,
-            }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{
-              opacity: 0,
-              y: toast.type === 'error' ? 12 : -12,
-              scale: 0.96,
-            }}
-            transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
-            className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border backdrop-blur-md ${getToastStyles(
-              toast.type
-            )}`}
-          >
-            <ToastIcon type={toast.type} />
-            <p className="font-satoshi text-sm font-medium flex-1 leading-snug">
-              {toast.message}
-            </p>
-            {toast.type === 'error' && (
-              <button
-                onClick={() => toastStore.removeToast(toast.id)}
-                className="opacity-50 hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </motion.div>
-        ))}
+        {toasts.map((toast) => {
+          const s = getToastStyles(toast.type)
+          return (
+            <motion.div
+              key={toast.id}
+              style={{
+                background: s.background,
+                border: s.border,
+                borderRadius: 14,
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                padding: '11px 14px',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+                color: s.color,
+                pointerEvents: 'auto',
+              }}
+              className="flex items-start gap-3"
+              initial={{
+                opacity: 0,
+                y: toast.type === 'error' ? 8 : -8,
+                scale: 0.97,
+              }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{
+                opacity: 0,
+                y: toast.type === 'error' ? 8 : -8,
+                scale: 0.97,
+              }}
+              transition={{ duration: 0.22, ease: EASE_OUT_EXPO }}
+            >
+              <ToastIcon type={toast.type} />
+              <p className="font-satoshi text-sm font-medium flex-1 leading-snug">
+                {toast.message}
+              </p>
+              {toast.type === 'error' && (
+                <button
+                  onClick={() => toastStore.removeToast(toast.id)}
+                  className="flex-shrink-0 transition-opacity hover:opacity-100 focus-ring"
+                  style={{ opacity: 0.45, color: s.color, fontSize: '0.8rem' }}
+                >
+                  ✕
+                </button>
+              )}
+            </motion.div>
+          )
+        })}
       </AnimatePresence>
     </div>
-  );
-};
+  )
+}
