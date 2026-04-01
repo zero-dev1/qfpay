@@ -1,96 +1,103 @@
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useWalletStore } from '../stores/walletStore'
-import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay'
-import { hapticLight, hapticMedium } from '../utils/haptics'
-import { BG_SURFACE, SUCCESS_GREEN, BRAND_BLUE } from '../lib/colors'
-import { EASE_OUT_EXPO } from '../lib/animations'
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useWalletStore } from '../stores/walletStore';
+import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
+import { hapticLight, hapticMedium } from '../utils/haptics';
+import { BG_SURFACE, SUCCESS_GREEN, BRAND_BLUE } from '../lib/colors';
+import { EASE_OUT_EXPO } from '../lib/animations';
 
 export function ConnectedPill() {
-  const { qnsName, address, ss58Address, avatarUrl, disconnect } = useWalletStore()
-  const [balance, setBalance] = useState<bigint | null>(null)
-  const [balanceVisible, setBalanceVisible] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    return localStorage.getItem('qfpay-sound-enabled') !== 'false'
-  })
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const { qnsName, address, ss58Address, avatarUrl, disconnect } = useWalletStore();
 
-  useEffect(() => {
-    const addr = ss58Address || address
-    if (addr) getQFBalance(addr).then(setBalance)
-  }, [ss58Address, address])
+  const [balance, setBalance]           = useState<bigint | null>(null);
+  const [balanceVisible, setBalanceVisible] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [copied, setCopied]             = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(
+    () => localStorage.getItem('qfpay-sound-enabled') !== 'false'
+  );
 
-  // Close dropdown on outside tap
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // ── Balance — calls getQFBalance on mount ──
   useEffect(() => {
-    if (!dropdownOpen) return
+    const addr = ss58Address || address;
+    if (addr) getQFBalance(addr).then(setBalance);
+  }, [ss58Address, address]);
+
+  // ── Close dropdown on outside tap ──
+  useEffect(() => {
+    if (!dropdownOpen) return;
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
+        setDropdownOpen(false);
       }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [dropdownOpen])
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [dropdownOpen]);
 
   const handleCopy = () => {
-    if (!address) return
-    navigator.clipboard.writeText(address)
-    hapticLight()
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
+    if (!address) return;
+    navigator.clipboard.writeText(address);
+    hapticLight();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const handleSoundToggle = () => {
-    const next = !soundEnabled
-    setSoundEnabled(next)
-    localStorage.setItem('qfpay-sound-enabled', String(next))
-    hapticLight()
-  }
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem('qfpay-sound-enabled', String(next));
+    hapticLight();
+  };
 
-  const displayBalance = balance === null
-    ? '··· QF'
-    : balanceVisible
-      ? `${formatQF(balance)} QF`
-      : '•••• QF'
+  // Loading: ··· QF  |  Masked: •••• QF  |  Revealed: 1,234 QF
+  const displayBalance =
+    balance === null
+      ? '··· QF'
+      : balanceVisible
+        ? `${formatQF(balance)} QF`
+        : '•••• QF';
 
-  const name = qnsName || truncateAddress(address || '')
-  const initial = (qnsName || 'W')[0].toUpperCase()
+  const name    = qnsName || truncateAddress(address || '');
+  const initial = (qnsName || address || 'W')[0].toUpperCase();
 
   return (
     <div ref={dropdownRef} className="relative">
-      {/* Pill */}
+
+      {/* ── Pill body — tap toggles balance reveal ── */}
       <motion.div
         className="flex items-center gap-2 cursor-pointer select-none"
         style={{
           background: BG_SURFACE,
           border: '1px solid rgba(255,255,255,0.10)',
           borderRadius: 9999,
-          padding: '6px 12px 6px 6px',
+          padding: '5px 12px 5px 5px',
         }}
         whileTap={{ scale: 0.97 }}
         onClick={() => {
-          hapticLight()
-          setBalanceVisible(v => !v)
+          hapticLight();
+          setBalanceVisible(v => !v);
         }}
       >
-        {/* Avatar */}
-        <div className="relative flex-shrink-0">
+        {/* Avatar — 40px per spec */}
+        <div className="relative flex-shrink-0" style={{ width: 40, height: 40 }}>
           {avatarUrl ? (
             <img
               src={avatarUrl}
               alt={name}
-              className="w-8 h-8 rounded-full object-cover"
+              className="w-full h-full rounded-full object-cover"
             />
           ) : (
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center font-clash font-bold text-white text-sm"
+              className="w-full h-full rounded-full flex items-center justify-center font-clash font-bold text-white text-sm"
               style={{ background: 'linear-gradient(135deg, #3B82F6, #4F46E5)' }}
             >
               {initial}
             </div>
           )}
+          {/* Presence dot */}
           <div
             className="absolute bottom-0 right-0 rounded-full animate-pulse-glow"
             style={{
@@ -101,58 +108,70 @@ export function ConnectedPill() {
           />
         </div>
 
-        {/* Name */}
-        <span className="font-satoshi font-medium text-sm whitespace-nowrap"
-          style={{ color: 'rgba(255,255,255,0.9)' }}>
-          {qnsName || truncateAddress(address || '')}
-          {qnsName && <span style={{ color: `rgba(0,64,255,0.85)` }}>.qf</span>}
+        {/* Name · .qf */}
+        <span
+          className="font-satoshi font-medium text-sm whitespace-nowrap"
+          style={{ color: 'rgba(255,255,255,0.90)' }}
+        >
+          {name}
+          {qnsName && (
+            <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
+          )}
         </span>
 
-        {/* Separator dot */}
+        {/* Square separator dot */}
         <div style={{
-          width: 4, height: 4, borderRadius: 1,
-          background: 'rgba(255,255,255,0.3)',
+          width: 4, height: 4,
+          borderRadius: 1,
+          background: 'rgba(255,255,255,0.30)',
           flexShrink: 0,
         }} />
 
-        {/* Balance */}
-        <span className="font-mono text-xs whitespace-nowrap"
-          style={{ color: `rgba(0,64,255,0.8)` }}>
+        {/* Balance — JetBrains Mono, BRAND_BLUE 80%, instant character swap */}
+        <span
+          className="font-mono text-xs whitespace-nowrap"
+          style={{ color: `${BRAND_BLUE}cc` }}
+        >
           {displayBalance}
         </span>
 
-        {/* Chevron — tap to open dropdown */}
+        {/* Chevron — tap opens dropdown, does NOT toggle balance */}
         <span
           className="text-xs ml-0.5 select-none"
           style={{ color: 'rgba(255,255,255,0.25)' }}
           onClick={(e) => {
-            e.stopPropagation()
-            hapticLight()
-            setDropdownOpen(v => !v)
+            e.stopPropagation();
+            hapticLight();
+            setDropdownOpen(v => !v);
           }}
-        >▾</span>
+        >
+          ▾
+        </span>
       </motion.div>
 
-      {/* Dropdown */}
+      {/* ── Dropdown — clear glass, border-radius 12px, spring 150ms ── */}
       <AnimatePresence>
         {dropdownOpen && (
           <motion.div
-            className="absolute right-0 mt-2 min-w-[160px] z-50"
+            className="absolute right-0 mt-2 min-w-[168px] z-50"
             style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(12,16,25,0.85)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.10)',
               borderRadius: 12,
               padding: 4,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
             }}
-            initial={{ opacity: 0, scale: 0.95, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -4 }}
-            transition={{ duration: 0.15, ease: EASE_OUT_EXPO }}
+            initial={{ opacity: 0, scale: 0.95, y: -6 }}
+            animate={{ opacity: 1, scale: 1,    y: 0  }}
+            exit={   { opacity: 0, scale: 0.95, y: -6 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 320, duration: 0.15 }}
           >
+            {/* Copy address */}
             <button
-              className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-satoshi transition-colors"
-              style={{ color: 'rgba(255,255,255,0.6)' }}
+              className="w-full text-left px-3 py-2.5 rounded-lg font-satoshi text-sm transition-colors"
+              style={{ color: 'rgba(255,255,255,0.60)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               onClick={handleCopy}
@@ -160,37 +179,39 @@ export function ConnectedPill() {
               {copied ? 'Copied ✓' : 'Copy address'}
             </button>
 
+            {/* Disconnect */}
             <button
-              className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-satoshi transition-colors"
-              style={{ color: 'rgba(255,255,255,0.4)' }}
+              className="w-full text-left px-3 py-2.5 rounded-lg font-satoshi text-sm transition-colors"
+              style={{ color: 'rgba(255,255,255,0.45)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              onClick={() => { hapticMedium(); disconnect() }}
+              onClick={() => { hapticMedium(); disconnect(); }}
             >
               Disconnect
             </button>
 
             {/* Divider */}
-            <div style={{
-              height: 1, background: 'rgba(255,255,255,0.06)',
-              margin: '4px 8px',
-            }} />
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 8px' }} />
 
             {/* Sound toggle */}
             <div className="flex items-center justify-between px-3 py-2.5">
-              <span className="text-sm font-satoshi" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              <span className="font-satoshi text-sm" style={{ color: 'rgba(255,255,255,0.40)' }}>
                 Sound
               </span>
               <button
                 onClick={handleSoundToggle}
-                className="relative w-8 h-4 rounded-full transition-colors"
+                className="relative rounded-full transition-colors"
                 style={{
+                  width: 32, height: 17,
                   background: soundEnabled ? BRAND_BLUE : 'rgba(255,255,255,0.12)',
+                  flexShrink: 0,
                 }}
+                aria-label={soundEnabled ? 'Sound on' : 'Sound off'}
               >
-                <div
-                  className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform"
-                  style={{ transform: soundEnabled ? 'translateX(18px)' : 'translateX(2px)' }}
+                <motion.div
+                  className="absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white"
+                  animate={{ x: soundEnabled ? 14 : 2 }}
+                  transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                 />
               </button>
             </div>
@@ -198,5 +219,5 @@ export function ConnectedPill() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }

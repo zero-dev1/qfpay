@@ -1,53 +1,55 @@
-import logoMark from '../assets/logo-mark.svg'
-import { useWalletStore } from '../stores/walletStore'
-import { hapticMedium } from '../utils/haptics'
-import { ThresholdScene } from './ThresholdScene'
-import { ShimmerButton } from './hero/ShimmerButton'
+import logoMark from '../assets/logo-mark.svg';
+import { useWalletStore } from '../stores/walletStore';
+import { hapticMedium } from '../utils/haptics';
+import { ThresholdScene } from './ThresholdScene';
+import { ShimmerButton } from './hero/ShimmerButton';
 
 export function DisconnectedView() {
-  const { setShowWalletModal } = useWalletStore()
+  const { setShowWalletModal } = useWalletStore();
 
   const handleConnect = () => {
-    hapticMedium()
-    setShowWalletModal(true)
-  }
+    hapticMedium();
+    setShowWalletModal(true);
+  };
 
   return (
-    <div
-      className="relative flex flex-col min-h-screen w-full overflow-hidden"
-      style={{ background: '#060A14' }}
-    >
-      {/* Header zone */}
-      <div className="flex flex-col items-center pt-12 pb-2 z-10">
-        <img src={logoMark} alt="QFPay" className="w-8 h-8 mb-6 opacity-70" />
+    <div className="flex flex-col min-h-screen w-full overflow-hidden">
+
+      {/* ── Top zone — logo + headline ── */}
+      <div className="flex flex-col items-center pt-12 pb-4 z-10 relative">
+        <img src={logoMark} alt="QFPay" className="w-8 h-8 mb-6" style={{ opacity: 0.6 }} />
         <h1
           className="font-clash font-bold text-white text-center leading-tight"
           style={{
-            fontSize: 'clamp(1.1rem, 3vw, 1.75rem)',
+            fontSize: 'clamp(2rem, 4vw, 3.5rem)',
             letterSpacing: '-0.02em',
-            opacity: 0.92,
           }}
         >
           Instant money.{' '}
-          <span style={{ color: '#0040FF' }}>Just a name.</span>
+          <span style={{ color: '#0040FF' }}>Just a <span style={{ color: '#0040FF' }}>name</span>.</span>
         </h1>
       </div>
 
-      {/* Stage zone — owns the viewport, pills are absolute inside */}
-      <div className="flex-1 relative z-10" style={{ minHeight: '60vh' }}>
+      {/* ── Middle zone — owns the viewport, ThresholdScene fills it ──
+           position: relative is critical — pills are absolute children of this.
+           min-height: 60vh ensures pills have real height to position into. ── */}
+      <div
+        className="flex-1 z-10"
+        style={{ position: 'relative', minHeight: '60vh' }}
+      >
         <ThresholdScene />
       </div>
 
-      {/* CTA zone */}
-      <div className="flex flex-col items-center pb-10 gap-5 z-10">
+      {/* ── Bottom zone — CTA button + trust line ── */}
+      <div className="flex flex-col items-center pb-10 gap-5 z-10 relative">
         <ShimmerButton onClick={handleConnect}>
           Connect Wallet
         </ShimmerButton>
         <p
-          className="text-center"
+          className="font-satoshi text-center"
           style={{
             fontSize: '11px',
-            color: 'rgba(255, 255, 255, 0.28)',
+            color: 'rgba(255,255,255,0.28)',
             letterSpacing: '0.04em',
           }}
         >
@@ -55,5 +57,5 @@ export function DisconnectedView() {
         </p>
       </div>
     </div>
-  )
+  );
 }

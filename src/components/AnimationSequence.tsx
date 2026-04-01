@@ -1,14 +1,40 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useEffect, useRef } from 'react'
-import { usePaymentStore } from '../stores/paymentStore'
-import { useWalletStore } from '../stores/walletStore'
-import { formatQF } from '../utils/qfpay'
-import { hapticBurn, hapticImpact, hapticSuccess } from '../utils/haptics'
-import { playBurnSound, playSendSound, playSuccessSound } from '../utils/sounds'
-import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations'
-import { useReducedMotion } from '../hooks/useReducedMotion'
-import { NamePill } from './NamePill'
-import { ShimmerButton } from './hero/ShimmerButton'
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { usePaymentStore } from '../stores/paymentStore';
+import { useWalletStore } from '../stores/walletStore';
+import { formatQF } from '../utils/qfpay';
+import { hapticBurn, hapticImpact, hapticSuccess } from '../utils/haptics';
+import { playBurnSound, playSendSound, playSuccessSound } from '../utils/sounds';
+import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
+import { BRAND_BLUE, BURN_CRIMSON, SUCCESS_GREEN } from '../lib/colors';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import { NamePill } from './NamePill';
+import { ShimmerButton } from './hero/ShimmerButton';
+
+// ─── Recipient color lookup (matches ThresholdScene identities) ───────────────
+const RECIPIENT_COLORS: Record<string, string> = {
+  vector: 'linear-gradient(135deg, #3B82F6, #4338CA)',
+  memechi: 'linear-gradient(135deg, #EC4899, #E11D48)',
+  steve: 'linear-gradient(135deg, #94A3B8, #3B82F6)',
+  hwmedia: 'linear-gradient(135deg, #8B5CF6, #9333EA)',
+  teddy: 'linear-gradient(135deg, #FB923C, #F59E0B)',
+  satoshiflipper: 'linear-gradient(135deg, #F97316, #DC2626)',
+  altcoinsensei: 'linear-gradient(135deg, #22D3EE, #3B82F6)',
+  soapy: 'linear-gradient(135deg, #2DD4BF, #10B981)',
+  patrick: 'linear-gradient(135deg, #60A5FA, #06B6D4)',
+  drprofit: 'linear-gradient(135deg, #22C55E, #14B8A6)',
+  vitalik: 'linear-gradient(135deg, #A855F7, #7C3AED)',
+  cryptomonk: 'linear-gradient(135deg, #6366F1, #2563EB)',
+  overdose: 'linear-gradient(135deg, #EF4444, #EA580C)',
+  amg: 'linear-gradient(135deg, #FBBF24, #EAB308)',
+  bino: 'linear-gradient(135deg, #EC4899, #C026D3)',
+  nils: 'linear-gradient(135deg, #94A3B8, #6B7280)',
+  cryptouser28: 'linear-gradient(135deg, #60A5FA, #64748B)',
+  sam: 'linear-gradient(135deg, #34D399, #22C55E)',
+};
+const FALLBACK_COLOR = 'linear-gradient(135deg, #10B981, #0D9488)';
+
+// ─── AnimationSequence ────────────────────────────────────────────────────────
 
 export const AnimationSequence = () => {
   const {
@@ -22,280 +48,293 @@ export const AnimationSequence = () => {
     advanceToSending,
     advanceToSuccess,
     reset,
-  } = usePaymentStore()
+  } = usePaymentStore();
 
-  const { qnsName: senderName, avatarUrl: senderAvatar } = useWalletStore()
-  const reducedMotion = useReducedMotion()
+  const { qnsName: senderName, avatarUrl: senderAvatar } = useWalletStore();
+  const reducedMotion = useReducedMotion();
 
-  // Derived
-  const departureAmountWei = recipientAmountWei + burnAmountWei
-
-  // Screen 5 state flags
-  const [senderDimmed, setSenderDimmed] = useState(false)
-  const [recipientArriving, setRecipientArriving] = useState(false)
-  const [showCheckmark, setShowCheckmark] = useState(false)
-  const [pillsVisible, setPillsVisible] = useState(true)
-  const [trailVisible, setTrailVisible] = useState(false)
-  const [displayAmount, setDisplayAmount] = useState(
-    Number(departureAmountWei) / 1e18
-  )
-  const [amountColor, setAmountColor] = useState('white')
+  // ── Derived ──
+  const departureAmountWei = recipientAmountWei + burnAmountWei;
 
   const displayRecipient = recipientName
     ? `${recipientName}.qf`
     : recipientAddress
       ? recipientAddress.slice(0, 8) + '...' + recipientAddress.slice(-4)
-      : ''
+      : '?';
 
-  // Recipient gradient color
-  const recipientColorMap: Record<string, string> = {
-    a: 'linear-gradient(135deg, #3B82F6, #4F46E5)',
-    b: 'linear-gradient(135deg, #06B6D4, #0284C7)',
-    m: 'linear-gradient(135deg, #EC4899, #BE185D)',
-    s: 'linear-gradient(135deg, #F97316, #EA580C)',
-    d: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
-  }
   const recipientColor = recipientName
-    ? recipientColorMap[recipientName[0].toLowerCase()] ||
-      'linear-gradient(135deg, #10B981, #0D9488)'
-    : 'linear-gradient(135deg, #10B981, #0D9488)'
+    ? (RECIPIENT_COLORS[recipientName.toLowerCase()] ?? FALLBACK_COLOR)
+    : FALLBACK_COLOR;
 
-  // ── BURN PHASE ──
+  // ── Screen 5 animation state ──
+  const [bgColor,           setBgColor]           = useState('#060A14');
+  const [senderDimmed,      setSenderDimmed]      = useState(false);
+  const [recipientArriving, setRecipientArriving] = useState(false);
+  const [showCheckmark,     setShowCheckmark]     = useState(false);
+  const [pillsVisible,      setPillsVisible]      = useState(true);
+  const [trailVisible,      setTrailVisible]      = useState(false);
+  const [displayAmount,     setDisplayAmount]     = useState(
+    Number(departureAmountWei) / 1e18
+  );
+  const [amountColor, setAmountColor]   = useState<string>('rgba(255,255,255,0.95)');
+  const [receiptTime, setReceiptTime]   = useState('');
+
+  const countdownAFRef = useRef<number | null>(null);
+
+  // ── BURN PHASE ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'burn') return
+    if (phase !== 'burn') return;
+
     if (reducedMotion) {
-      setTimeout(advanceToSending, 400)
-      return
+      setTimeout(advanceToSending, 400);
+      return;
     }
 
-    playBurnSound()
-    hapticBurn()
+    const startValue = Number(departureAmountWei) / 1e18;
+    const endValue   = Number(recipientAmountWei)  / 1e18;
+    const difference = startValue - endValue;
 
-    const startValue = Number(departureAmountWei) / 1e18
-    const endValue = Number(recipientAmountWei) / 1e18
-    const difference = startValue - endValue
+    const timers: ReturnType<typeof setTimeout>[] = [
 
-    let countdownAF: number
-
-    const timers = [
+      // Act 1 — Charge (0–600ms): trail draws upward
       setTimeout(() => setTrailVisible(true), 100),
-      // Shift amount to amber and start countdown
+
+      // Act 2 — Burn (600ms): bg shifts to crimson, sound, haptic, countdown starts
       setTimeout(() => {
-        setAmountColor('#F59E0B')
-        const COUNTDOWN_DURATION = 700
-        const startTime = performance.now()
+        setBgColor('#0F0608');
+        playBurnSound();
+        hapticBurn();
+        setAmountColor('#F59E0B');
+
+        const COUNTDOWN_DURATION = 700;
+        const startTime = performance.now();
         const tick = () => {
-          const elapsed = performance.now() - startTime
-          const progress = Math.min(elapsed / COUNTDOWN_DURATION, 1)
-          const eased = progress * (2 - progress) // easeOut
-          setDisplayAmount(startValue - difference * eased)
+          const elapsed  = performance.now() - startTime;
+          const progress = Math.min(elapsed / COUNTDOWN_DURATION, 1);
+          const eased    = progress * (2 - progress); // easeOut
+          setDisplayAmount(startValue - difference * eased);
           if (progress < 1) {
-            countdownAF = requestAnimationFrame(tick)
+            countdownAFRef.current = requestAnimationFrame(tick);
           } else {
-            setDisplayAmount(endValue)
+            setDisplayAmount(endValue);
+            countdownAFRef.current = null;
           }
-        }
-        countdownAF = requestAnimationFrame(tick)
+        };
+        countdownAFRef.current = requestAnimationFrame(tick);
       }, 600),
-      setTimeout(() => setSenderDimmed(true), 1100),
-      setTimeout(() => setAmountColor('white'), 1400),
+
+      // Hold amber 200ms after countdown ends (600 + 700 = 1300ms)
+      // then restore background and color
+      setTimeout(() => {
+        setBgColor('#060A14');
+        setAmountColor('rgba(255,255,255,0.95)');
+        setSenderDimmed(true);
+      }, 1500),
+
+      // End of burn phase
       setTimeout(advanceToSending, 1800),
-    ]
+    ];
 
     return () => {
-      timers.forEach(clearTimeout)
-      if (countdownAF) cancelAnimationFrame(countdownAF)
-    }
-  }, [phase])
+      timers.forEach(clearTimeout);
+      if (countdownAFRef.current) cancelAnimationFrame(countdownAFRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
-  // ── SENDING PHASE ──
+  // ── SENDING PHASE ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'sending') return
+    if (phase !== 'sending') return;
+
     if (reducedMotion) {
-      setTimeout(advanceToSuccess, 400)
-      return
+      setTimeout(advanceToSuccess, 400);
+      return;
     }
 
-    playSendSound()
+    // Act 3 — Send: trail draws down, recipient brightens
+    playSendSound();
 
-    const timers = [
-      setTimeout(() => hapticImpact(), 700),
+    const timers: ReturnType<typeof setTimeout>[] = [
+      // Act 4 — Resolution: checkmark at 800ms
       setTimeout(() => {
-        setShowCheckmark(true)
-        setRecipientArriving(true)
+        hapticImpact();
+        setShowCheckmark(true);
+        setRecipientArriving(true);
       }, 800),
-      setTimeout(() => setPillsVisible(false), 1100),
+
+      // Pills fade out at 1000ms
+      setTimeout(() => setPillsVisible(false), 1000),
+
+      // Advance to success at 2200ms
       setTimeout(advanceToSuccess, 2200),
-    ]
-    return () => timers.forEach(clearTimeout)
-  }, [phase])
+    ];
 
-  // ── SUCCESS PHASE ──
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  // ── SUCCESS PHASE ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'success') return
-    playSuccessSound()
-    hapticSuccess()
-  }, [phase])
+    if (phase !== 'success') return;
 
-  // ── BACKGROUND COLOR ──
-  const getBgColor = () => {
-    if (phase === 'burn') return '#0F0608'
-    if (phase === 'success') return '#0040FF'
-    return '#060A14'
-  }
+    playSuccessSound();
+    hapticSuccess();
+    setBgColor(BRAND_BLUE);          // sapphire bloom
+    setReceiptTime(new Date().toLocaleTimeString());
+  }, [phase]);
 
-  // ── REDUCED MOTION — static success state ──
+  // ─── Reduced motion — static success state ────────────────────────────────
   if (reducedMotion && phase === 'success') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6"
-        style={{ background: '#0040FF' }}>
+      <div
+        className="flex flex-col items-center justify-center min-h-screen px-6"
+        style={{ background: BRAND_BLUE }}
+      >
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="mb-6">
           <path d="M14 28L24 38L42 18"
-            stroke="rgba(34,197,94,0.9)" strokeWidth="3"
+            stroke={`${SUCCESS_GREEN}e6`} strokeWidth="3"
             strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <p className="font-satoshi text-base mb-8"
-          style={{ color: 'rgba(185,28,28,0.8)' }}>
+        <p className="font-satoshi font-medium text-base mb-8"
+          style={{ color: `${BURN_CRIMSON}cc` }}>
           🔥 {formatQF(burnAmountWei)} QF burned forever
         </p>
-        <button
-          className="font-satoshi font-medium text-white/80 text-base mb-3"
-          onClick={reset}
-        >
-          Send again
-        </button>
-        <button
-          className="font-satoshi text-white/50 text-sm"
-          onClick={reset}
-        >
-          Done
-        </button>
+        <div className="flex flex-col items-center gap-3">
+          <ShimmerButton onClick={reset}>Send again</ShimmerButton>
+          <button className="font-satoshi text-sm" style={{ color: 'rgba(255,255,255,0.50)' }} onClick={reset}>Done</button>
+        </div>
       </div>
-    )
+    );
   }
+
+  // ─── Main render ──────────────────────────────────────────────────────────
 
   return (
     <motion.div
       className="relative flex flex-col items-center justify-center min-h-screen px-6 overflow-hidden"
-      animate={{ backgroundColor: getBgColor() }}
-      transition={{ duration: phase === 'burn' ? 0.3 : 0.4, ease: EASE_OUT_EXPO }}
+      animate={{ backgroundColor: bgColor }}
+      transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
     >
 
-      {/* ── SCREEN 5 — burn + sending phases ── */}
+      {/* ── SCREEN 5 — burn and sending phases ────────────────────────────── */}
       <AnimatePresence>
         {(phase === 'burn' || phase === 'sending') && (
           <motion.div
             key="screen5"
             className="relative w-full flex flex-col items-center"
-            style={{ minHeight: '70vh' }}
+            style={{ minHeight: '72vh' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{    opacity: 0, transition: { duration: 0.3 } }}
             transition={{ duration: 0.4 }}
           >
-
-            {/* Sender pill */}
+            {/* ── Sender pill — top ── */}
             <AnimatePresence>
               {pillsVisible && (
                 <motion.div
                   className="absolute left-1/2 -translate-x-1/2"
-                  style={{ top: '8%' }}
+                  style={{ top: '10%' }}
                   initial={{ opacity: 0, y: -12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y:   0  }}
+                  exit={{    opacity: 0, y:  -8, transition: { duration: 0.35 } }}
                   transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
                 >
                   <NamePill
                     name={senderName || 'you'}
                     color="linear-gradient(135deg, #3B82F6, #4F46E5)"
-                    avatarUrl={senderAvatar || undefined}
+                    avatarUrl={senderAvatar ?? undefined}
                     state={senderDimmed ? 'dimmed' : 'default'}
                   />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Vertical trail */}
+            {/* ── Vertical trail ── */}
             <AnimatePresence>
-              {trailVisible && (
+              {trailVisible && pillsVisible && (
                 <motion.svg
                   className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-                  style={{ top: '15%', height: '70%', width: 2 }}
+                  style={{ top: '18%', height: '64%', width: 2, overflow: 'visible' }}
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: pillsVisible ? 1 : 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{    opacity: 0 }}
                   transition={{ duration: 0.3 }}
                 >
                   <motion.line
                     x1="1" y1="0%" x2="1" y2="100%"
-                    stroke="rgba(0,64,255,0.25)"
+                    stroke={`rgba(0,64,255,0.30)`}
                     strokeWidth="1.5"
-                    strokeDasharray="4 4"
+                    strokeDasharray="4 6"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
+                    transition={{ duration: 0.55, ease: EASE_OUT_EXPO }}
                   />
                 </motion.svg>
               )}
             </AnimatePresence>
 
-            {/* Amount — center stage */}
+            {/* ── Amount — center stage ── */}
             <AnimatePresence>
               {!showCheckmark && (
                 <motion.div
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10"
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 pointer-events-none"
                   initial={{ scale: 0.7, opacity: 0, filter: 'blur(8px)' }}
-                  animate={{
-                    scale: 1,
-                    opacity: phase === 'sending' ? [1, 1, 0] : 1,
-                    filter: 'blur(0px)',
-                    y: phase === 'sending' ? [0, 0, '35vh'] : 0,
-                  }}
-                  transition={{
-                    scale: { duration: 0.5, ease: EASE_OUT_EXPO },
-                    filter: { duration: 0.5 },
-                    opacity: phase === 'sending'
-                      ? { duration: 0.8, times: [0, 0.5, 1] }
-                      : { duration: 0.4 },
-                    y: phase === 'sending'
-                      ? { duration: 0.8, ease: [0.25, 0.1, 0.25, 1], times: [0, 0.1, 1] }
-                      : {},
-                  }}
-                  exit={{ opacity: 0, scale: 0.85 }}
+                  animate={
+                    phase === 'sending'
+                      ? { scale: 1, opacity: [1, 1, 0], filter: 'blur(0px)', y: [0, 0, 160] }
+                      : { scale: 1, opacity: 1,        filter: 'blur(0px)' }
+                  }
+                  transition={
+                    phase === 'sending'
+                      ? {
+                          scale:   { duration: 0.4, ease: EASE_OUT_EXPO },
+                          filter:  { duration: 0.4 },
+                          opacity: { duration: 0.8, times: [0, 0.4, 1] },
+                          y:       { duration: 0.8, ease: [0.25, 0.1, 0.25, 1], times: [0, 0.1, 1] },
+                        }
+                      : { duration: 0.5, ease: EASE_OUT_EXPO }
+                  }
+                  exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.2 } }}
                 >
                   <span
                     className="font-clash font-bold"
                     style={{
                       fontSize: 'clamp(2.5rem, 8vw, 5rem)',
-                      color: amountColor,
                       letterSpacing: '-0.02em',
+                      color: amountColor,
                       transition: 'color 0.15s ease',
                     }}
                   >
-                    {/* Format display amount — avoid calling formatQF on float,
-                        convert back to bigint for formatting */}
-                    {formatQF(BigInt(Math.round(displayAmount * 1e18)))}
-                    <span style={{ color: '#0040FF', fontSize: '0.55em', marginLeft: '0.15em' }}>
-                      QF
-                    </span>
+                    {formatQF(BigInt(Math.max(0, Math.round(displayAmount * 1e18))))}
+                  </span>
+                  <span
+                    className="font-clash font-bold block"
+                    style={{
+                      fontSize: 'clamp(1rem, 2.5vw, 1.5rem)',
+                      color: `${BRAND_BLUE}cc`,
+                      marginTop: 2,
+                    }}
+                  >
+                    QF
                   </span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Checkmark — appears after amount travels */}
+            {/* ── Checkmark — emerald stroke, path-length animation ── */}
             <AnimatePresence>
               {showCheckmark && (
                 <motion.div
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1,   opacity: 1 }}
+                  exit={{    scale: 0.6, opacity: 0 }}
+                  transition={{ ...EASE_SPRING }}
                 >
-                  <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                  <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
                     <motion.path
-                      d="M14 28L24 38L42 18"
-                      stroke="rgba(34,197,94,0.9)"
+                      d="M15 30L26 41L45 19"
+                      stroke={`${SUCCESS_GREEN}e6`}
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -308,46 +347,24 @@ export const AnimationSequence = () => {
               )}
             </AnimatePresence>
 
-            {/* Recipient pill */}
+            {/* ── Recipient pill — bottom ── */}
             <AnimatePresence>
               {pillsVisible && (
                 <motion.div
                   className="absolute left-1/2 -translate-x-1/2"
-                  style={{ bottom: '8%' }}
+                  style={{ bottom: '10%' }}
                   initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y:  0  }}
+                  exit={{    opacity: 0, y:  8, transition: { duration: 0.35 } }}
                   transition={{ delay: 0.15, duration: 0.4, ease: EASE_OUT_EXPO }}
                 >
                   <NamePill
                     name={recipientName || recipientAddress?.slice(0, 8) || '?'}
                     color={recipientColor}
-                    avatarUrl={recipientAvatar || undefined}
+                    avatarUrl={recipientAvatar ?? undefined}
                     state={recipientArriving ? 'arriving' : 'default'}
                   />
                 </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Sapphire radial bloom — starts as success phase begins */}
-            <AnimatePresence>
-              {phase === 'sending' && showCheckmark && (
-                <motion.div
-                  className="fixed inset-0 pointer-events-none"
-                  style={{
-                    background: '#0040FF',
-                    borderRadius: '50%',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: 100,
-                    height: 100,
-                    zIndex: 0,
-                  }}
-                  initial={{ scale: 0, opacity: 0 }}
-                  // This only starts when advanceToSuccess fires
-                  // The bloom is triggered by the success phase transition
-                />
               )}
             </AnimatePresence>
 
@@ -355,7 +372,7 @@ export const AnimationSequence = () => {
         )}
       </AnimatePresence>
 
-      {/* ── SCREEN 6 — success phase ── */}
+      {/* ── SCREEN 6 — success phase ───────────────────────────────────────── */}
       <AnimatePresence>
         {phase === 'success' && (
           <motion.div
@@ -365,7 +382,7 @@ export const AnimationSequence = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
           >
-            {/* Background cooling overlay */}
+            {/* Background cools from sapphire toward dark over 1500ms — 800ms delay */}
             <motion.div
               className="fixed inset-0 pointer-events-none z-0"
               style={{ background: '#080D1A' }}
@@ -377,14 +394,14 @@ export const AnimationSequence = () => {
             {/* Checkmark — persists from Screen 5 */}
             <motion.div
               className="relative z-10 mb-6"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1,    opacity: 1 }}
               transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
             >
-              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+              <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
                 <path
-                  d="M14 28L24 38L42 18"
-                  stroke="rgba(34,197,94,0.9)"
+                  d="M15 30L26 41L45 19"
+                  stroke={`${SUCCESS_GREEN}e6`}
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -392,10 +409,10 @@ export const AnimationSequence = () => {
               </svg>
             </motion.div>
 
-            {/* Burn epitaph — first text to appear */}
+            {/* Burn epitaph — 800ms delay. Past tense: "burned" not "burns" */}
             <motion.p
               className="relative z-10 font-satoshi font-medium text-base mb-8"
-              style={{ color: 'rgba(185,28,28,0.8)' }}
+              style={{ color: `${BURN_CRIMSON}cc` }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8, duration: 0.4, ease: EASE_OUT_EXPO }}
@@ -403,17 +420,19 @@ export const AnimationSequence = () => {
               🔥 {formatQF(burnAmountWei)} QF burned forever
             </motion.p>
 
-            {/* Receipt card */}
+            {/* Receipt card — slides up at 1400ms, spring */}
             <motion.div
               className="relative z-10 w-full max-w-sm mx-auto mb-8"
               style={{
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.10)',
                 borderRadius: 20,
-                padding: '16px',
+                padding: '16px 18px',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
               }}
               initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ opacity: 1, y: 0  }}
               transition={{
                 delay: 1.4,
                 type: 'spring',
@@ -421,48 +440,37 @@ export const AnimationSequence = () => {
                 damping: 24,
               }}
             >
-              {/* Pills row */}
-              <div className="flex items-center justify-between gap-2 mb-3">
-                {/* Sender pill — compact */}
+              {/* Sender → Recipient row */}
+              <div className="flex items-center gap-3 mb-4">
+                {/* Sender chip */}
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   {senderAvatar ? (
-                    <img src={senderAvatar} alt={senderName || ''}
-                      className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                    <img src={senderAvatar} alt={senderName || ''} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <span className="font-clash font-bold text-[10px] text-white">
-                        {(senderName || '?')[0].toUpperCase()}
-                      </span>
+                      <span className="font-clash font-bold text-[10px] text-white">{(senderName || 'Y')[0].toUpperCase()}</span>
                     </div>
                   )}
-                  <span className="font-satoshi text-xs text-white/70 truncate">
-                    {senderName
-                      ? <>{senderName}<span style={{ color: '#0040FF' }}>.qf</span></>
-                      : 'you'}
+                  <span className="font-satoshi text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                    {senderName ? <>{senderName}<span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span></> : 'you'}
                   </span>
                 </div>
 
-                {/* Arrow */}
-                <div style={{
-                  height: 1, flex: '0 0 24px',
-                  background: 'rgba(0,64,255,0.4)',
-                }} />
+                {/* Sapphire arrow */}
+                <div style={{ height: 1, flex: '0 0 20px', background: `rgba(0,64,255,0.45)` }} />
 
-                {/* Recipient pill — compact */}
+                {/* Recipient chip */}
                 <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-                  <span className="font-satoshi text-xs text-white/70 truncate">
+                  <span className="font-satoshi text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
                     {recipientName
-                      ? <>{recipientName}<span style={{ color: '#0040FF' }}>.qf</span></>
+                      ? <>{recipientName}<span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span></>
                       : displayRecipient}
                   </span>
                   {recipientAvatar ? (
-                    <img src={recipientAvatar} alt={recipientName || ''}
-                      className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                    <img src={recipientAvatar} alt={recipientName || ''} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <span className="font-clash font-bold text-[10px] text-white">
-                        {(recipientName || '?')[0].toUpperCase()}
-                      </span>
+                      <span className="font-clash font-bold text-[10px] text-white">{(recipientName || '?')[0].toUpperCase()}</span>
                     </div>
                   )}
                 </div>
@@ -470,58 +478,56 @@ export const AnimationSequence = () => {
 
               {/* Amount + burn row */}
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs text-white/60">
+                <div className="font-mono text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
                   {formatQF(recipientAmountWei)} QF ·{' '}
-                  <span style={{ color: 'rgba(185,28,28,0.7)' }}>
+                  <span style={{ color: `${BURN_CRIMSON}a6` }}>
                     🔥 {formatQF(burnAmountWei)} burned
                   </span>
-                </span>
+                </div>
                 {/* Share icon */}
                 <button
-                  className="ml-2 flex-shrink-0"
-                  style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}
+                  className="ml-2 flex-shrink-0 hover:opacity-80 transition-opacity"
+                  style={{ color: 'rgba(255,255,255,0.30)', fontSize: '1rem' }}
                   onClick={async () => {
                     const text = `Sent ${formatQF(recipientAmountWei)} QF to ${
                       recipientName ? recipientName + '.qf' : displayRecipient
-                    } · ${formatQF(burnAmountWei)} QF burned forever · qfpay.xyz`
+                    } · ${formatQF(burnAmountWei)} QF burned forever · qfpay.xyz`;
                     if (navigator.share) {
-                      await navigator.share({ text })
+                      await navigator.share({ text });
                     } else {
-                      navigator.clipboard.writeText(text)
+                      navigator.clipboard.writeText(text);
                     }
                   }}
+                  aria-label="Share"
                 >
                   ↗
                 </button>
               </div>
 
               {/* Timestamp */}
-              <p className="font-mono text-white/25 mt-1"
-                style={{ fontSize: 10 }}>
-                {new Date().toLocaleTimeString()}
+              <p className="font-mono mt-2" style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
+                {receiptTime}
               </p>
             </motion.div>
 
-            {/* Action buttons */}
+            {/* Action buttons — 2000ms delay */}
             <motion.div
               className="relative z-10 flex flex-col items-center gap-3"
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ opacity: 1, y:  0  }}
               transition={{ delay: 2.0, duration: 0.4, ease: EASE_OUT_EXPO }}
             >
-              <ShimmerButton onClick={reset}>
-                Send again
-              </ShimmerButton>
+              <ShimmerButton onClick={reset}>Send again</ShimmerButton>
               <button
                 className="font-satoshi text-sm focus-ring"
-                style={{ color: 'rgba(255,255,255,0.5)' }}
+                style={{ color: 'rgba(255,255,255,0.50)' }}
                 onClick={reset}
               >
                 Done
               </button>
             </motion.div>
 
-            {/* On-chain confirmation status — preserved from original */}
+            {/* ── On-chain confirmation status — copied exactly from original ── */}
             <motion.div
               className="relative z-10 mt-6 flex items-center gap-2"
               initial={{ opacity: 0 }}
@@ -530,35 +536,37 @@ export const AnimationSequence = () => {
             >
               {confirmed === true ? (
                 <>
-                  <div className="w-1.5 h-1.5 rounded-full bg-qfpay-green" />
-                  <span className="font-mono text-xs text-white/40">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: SUCCESS_GREEN }} />
+                  <span className="font-mono text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
                     Confirmed on-chain
                   </span>
                 </>
               ) : confirmed === null ? (
                 <>
                   <motion.div
-                    className="w-1.5 h-1.5 rounded-full bg-white/30"
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.30)' }}
                     animate={{ opacity: [0.3, 1, 0.3] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
                   />
-                  <span className="font-mono text-xs text-white/30">
+                  <span className="font-mono text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
                     Confirming...
                   </span>
                 </>
               ) : (
                 <>
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                  <span className="font-mono text-xs text-white/25">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.20)' }} />
+                  <span className="font-mono text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
                     Transaction sent
                   </span>
                 </>
               )}
             </motion.div>
+
           </motion.div>
         )}
       </AnimatePresence>
 
     </motion.div>
-  )
-}
+  );
+};

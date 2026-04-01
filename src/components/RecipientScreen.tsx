@@ -4,48 +4,43 @@ import { usePaymentStore } from '../stores/paymentStore';
 import { resolveForward, getAvatar } from '../utils/qfpay';
 import { detectAddressType, ss58ToEvmAddress } from '../utils/address';
 import { useWalletStore } from '../stores/walletStore';
-import { Loader2, Check, X } from 'lucide-react';
 import { hapticLight, hapticDouble } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
+import { BRAND_BLUE, SUCCESS_GREEN } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import {
   EXAMPLE_NAMES, TYPE_SPEED, DELETE_SPEED,
-  PAUSE_AFTER_TYPE, PAUSE_AFTER_DELETE
+  PAUSE_AFTER_TYPE, PAUSE_AFTER_DELETE,
 } from '../lib/recipientDemoNames';
 
 export const RecipientScreen = () => {
   const {
-    setRecipient,
-    goToAmount,
-    goBackToIdle,
-    recipientAddress,
-    recipientName,
-    recipientAvatar,
+    setRecipient, goToAmount, goBackToIdle,
+    recipientAddress, recipientName, recipientAvatar,
   } = usePaymentStore();
   const { address: senderAddress } = useWalletStore();
   const reducedMotion = useReducedMotion();
 
-  const [input, setInput] = useState('');
-  const [isResolving, setIsResolving] = useState(false);
-  const [resolved, setResolved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isActive, setIsActive] = useState(false);
-  const [placeholder, setPlaceholder] = useState('');
+  const [input,        setInput]        = useState('');
+  const [isResolving,  setIsResolving]  = useState(false);
+  const [resolved,     setResolved]     = useState(false);
+  const [error,        setError]        = useState<string | null>(null);
+  const [isActive,     setIsActive]     = useState(false);
+  const [placeholder,  setPlaceholder]  = useState('');
   const [avatarLoaded, setAvatarLoaded] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+
+  const inputRef     = useRef<HTMLInputElement>(null);
   const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset avatar loaded state when recipient changes
-  useEffect(() => {
-    setAvatarLoaded(false);
-  }, [recipientName]);
+  // ── Reset avatar loaded state when recipient changes ──
+  useEffect(() => { setAvatarLoaded(false); }, [recipientName]);
 
-  // Auto-typing placeholder — unchanged logic, just runs when input is empty
+  // ── Auto-typing placeholder — stops instantly on real input ──────────────────
   useEffect(() => {
     if (input || reducedMotion) return;
 
-    let nameIndex = 0;
-    let charIndex = 0;
+    let nameIndex  = 0;
+    let charIndex  = 0;
     let isDeleting = false;
 
     const tick = () => {
@@ -54,22 +49,17 @@ export const RecipientScreen = () => {
       if (!isDeleting) {
         charIndex++;
         setPlaceholder(currentName.slice(0, charIndex));
-
         if (charIndex === currentName.length) {
-          animationRef.current = setTimeout(() => {
-            isDeleting = true;
-            tick();
-          }, PAUSE_AFTER_TYPE);
+          animationRef.current = setTimeout(() => { isDeleting = true; tick(); }, PAUSE_AFTER_TYPE);
           return;
         }
         animationRef.current = setTimeout(tick, TYPE_SPEED);
       } else {
         charIndex--;
         setPlaceholder(currentName.slice(0, charIndex));
-
         if (charIndex === 0) {
           isDeleting = false;
-          nameIndex = (nameIndex + 1) % EXAMPLE_NAMES.length;
+          nameIndex  = (nameIndex + 1) % EXAMPLE_NAMES.length;
           animationRef.current = setTimeout(tick, PAUSE_AFTER_DELETE);
           return;
         }
@@ -78,13 +68,10 @@ export const RecipientScreen = () => {
     };
 
     animationRef.current = setTimeout(tick, 500);
+    return () => { if (animationRef.current) clearTimeout(animationRef.current); };
+  }, [input, reducedMotion]);
 
-    return () => {
-      if (animationRef.current) clearTimeout(animationRef.current);
-    };
-  }, [input]);
-
-  // Resolve input — unchanged logic
+  // ── resolveInput — copied verbatim ───────────────────────────────────────────
   const resolveInput = useCallback(async (value: string) => {
     if (!value.trim()) {
       setRecipient(null, null);
@@ -128,7 +115,11 @@ export const RecipientScreen = () => {
       }
 
       // Self-send check
-      if (senderAddress && resolvedAddress && resolvedAddress.toLowerCase() === senderAddress.toLowerCase()) {
+      if (
+        senderAddress &&
+        resolvedAddress &&
+        resolvedAddress.toLowerCase() === senderAddress.toLowerCase()
+      ) {
         setError('Cannot send to yourself');
         setIsResolving(false);
         setRecipient(null, null);
@@ -153,6 +144,7 @@ export const RecipientScreen = () => {
     }
   }, [senderAddress, setRecipient]);
 
+  // ── Debounce resolution — 400ms after input stops ──
   useEffect(() => {
     const timer = setTimeout(() => resolveInput(input), 400);
     return () => clearTimeout(timer);
@@ -160,12 +152,19 @@ export const RecipientScreen = () => {
 
   const canContinue = resolved && recipientAddress;
 
+  const handleAdvance = () => {
+    hapticLight();
+    goToAmount();
+  };
+
   const handleScreenTap = () => {
     if (!isActive && !input) {
       setIsActive(true);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
+
+  // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <motion.div
@@ -176,186 +175,246 @@ export const RecipientScreen = () => {
       transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
       onClick={handleScreenTap}
     >
-      {/* Back button */}
+      {/* ── Back chevron — top-left, 25% opacity ── */}
       <motion.button
-        className="fixed top-5 left-5 z-50 text-white/25 hover:text-white/50 transition-colors"
-        style={{ fontSize: '1.5rem', lineHeight: 1 }}
-        onClick={(e) => { e.stopPropagation(); hapticLight(); goBackToIdle() }}
+        className="fixed top-5 left-5 z-50 transition-opacity hover:opacity-60"
+        style={{ fontSize: '1.75rem', lineHeight: 1, color: 'rgba(255,255,255,0.25)' }}
+        onClick={(e) => { e.stopPropagation(); hapticLight(); goBackToIdle(); }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.2, duration: 0.3 }}
         whileTap={{ scale: 0.9 }}
+        aria-label="Back"
       >
         ‹
       </motion.button>
 
+      <div className="relative w-full max-w-lg flex flex-col items-center">
 
-      <div className="relative w-full max-w-lg">
-        {/* Resolved identity display - ABOVE input */}
+        {/* ── Resolved avatar — materialises ABOVE input, layoutId for shared transition ── */}
         <AnimatePresence>
           {resolved && recipientName && !error && (
             <motion.div
-              className="flex flex-col items-center mb-6"
-              initial={{ opacity: 0, scale: 0.5, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+              className="flex flex-col items-center mb-8"
+              // Everything NOT the avatar dims 15% — handled via opacity on this wrapper's siblings
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
             >
-              {/* Avatar — large, above input */}
-              <motion.div layoutId="recipient-avatar" className="relative mb-3">
+              {/* Avatar — 64px, spring entrance from scale 0.5 and blur 12px */}
+              <motion.div
+                layoutId="recipient-avatar"
+                className="relative mb-3 cursor-pointer"
+                initial={{ scale: 0.5, filter: 'blur(12px)', opacity: 0 }}
+                animate={{ scale: 1,   filter: 'blur(0px)',  opacity: 1 }}
+                transition={{ ...EASE_SPRING }}
+                onClick={(e) => { e.stopPropagation(); if (canContinue) handleAdvance(); }}
+              >
                 {recipientAvatar ? (
                   <img
                     src={recipientAvatar}
                     alt={recipientName}
-                    className="w-16 h-16 rounded-full object-cover border border-white/20"
+                    className="rounded-full object-cover"
+                    style={{
+                      width: 64, height: 64,
+                      border: `1.5px solid rgba(255,255,255,0.15)`,
+                      opacity: avatarLoaded ? 1 : 0,
+                      transition: 'opacity 0.3s',
+                    }}
                     onLoad={() => setAvatarLoaded(true)}
-                    style={{ opacity: avatarLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center"
-                    style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <div
+                    className="rounded-full flex items-center justify-center"
+                    style={{
+                      width: 64, height: 64,
+                      background: 'rgba(255,255,255,0.08)',
+                      border: `1.5px solid rgba(255,255,255,0.15)`,
+                    }}
+                  >
                     <span className="font-clash font-bold text-2xl text-white">
                       {recipientName[0].toUpperCase()}
                     </span>
                   </div>
                 )}
 
-                {/* Single pulse ring — plays once on mount */}
+                {/* Single pulse ring — expands once on arrival */}
                 <motion.div
-                  className="absolute inset-0 rounded-full"
-                  style={{ border: '1px solid rgba(0,64,255,0.4)' }}
-                  initial={{ scale: 1, opacity: 0.4 }}
-                  animate={{ scale: 1.5, opacity: 0 }}
-                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{ border: `1.5px solid ${BRAND_BLUE}` }}
+                  initial={{ scale: 1,   opacity: 0.6 }}
+                  animate={{ scale: 1.6, opacity: 0   }}
+                  transition={{ duration: 0.65, ease: 'easeOut' }}
                 />
 
-                {/* Continuous breathing */}
+                {/* Continuous breathing ring */}
                 <motion.div
-                  className="absolute inset-0 rounded-full"
-                  style={{ border: '1px solid rgba(0,64,255,0.2)' }}
-                  animate={{ scale: [1, 1.08, 1] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{ border: `1px solid rgba(0,64,255,0.22)` }}
+                  animate={{ scale: [1, 1.09, 1] }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
+
+                {/* Presence dot */}
+                <div
+                  className="absolute animate-pulse-glow"
+                  style={{
+                    width: 10, height: 10,
+                    bottom: 1, right: 1,
+                    borderRadius: '50%',
+                    background: SUCCESS_GREEN,
+                    border: '2px solid #060A14',
+                  }}
                 />
               </motion.div>
 
-              {/* Name below avatar */}
+              {/* Recipient name below avatar */}
               <motion.p
                 className="font-satoshi font-medium text-sm"
-                style={{ color: 'rgba(255,255,255,0.7)' }}
+                style={{ color: 'rgba(255,255,255,0.70)' }}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.3, ease: EASE_OUT_EXPO }}
+                transition={{ delay: 0.12, duration: 0.3, ease: EASE_OUT_EXPO }}
               >
                 {recipientName}
-                <span style={{ color: 'rgba(0,64,255,0.85)' }}>.qf</span>
+                <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
               </motion.p>
             </motion.div>
           )}
         </AnimatePresence>
-        {/* Hidden real input */}
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value.toLowerCase());
-            if (!isActive) setIsActive(true);
-          }}
-          onFocus={() => setIsActive(true)}
-          className="absolute inset-0 w-full opacity-0 z-10 cursor-text"
-          autoComplete="off"
-          spellCheck={false}
-          aria-label="Recipient .qf name or address"
-          role="combobox"
-          aria-expanded={resolved && !!recipientName}
-          aria-autocomplete="none"
-        />
 
-        {/* Display layer */}
-        <div className="flex items-center justify-center min-h-[80px] relative">
-          {input ? (
-            <div className="flex items-center gap-4">
-              <span className="font-clash font-bold text-4xl sm:text-5xl md:text-6xl text-white">
+        {/* ── Input area — dims 15% when resolved ── */}
+        <motion.div
+          className="relative w-full flex flex-col items-center"
+          animate={{ opacity: resolved && !error ? 0.85 : 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* Hidden real input — receives all keypresses, never visible */}
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value.toLowerCase());
+              if (!isActive) setIsActive(true);
+            }}
+            onFocus={() => setIsActive(true)}
+            className="absolute inset-0 w-full z-10"
+            style={{ opacity: 0, cursor: 'text' }}
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="Recipient .qf name or address"
+          />
+
+          {/* Large display — Clash Display, above underline */}
+          <div
+            className="flex items-center justify-center w-full"
+            style={{ minHeight: 80 }}
+          >
+            {input ? (
+              <span
+                className="font-clash font-bold text-center"
+                style={{
+                  fontSize: 'clamp(2.25rem, 8vw, 4rem)',
+                  letterSpacing: '-0.02em',
+                  color: error
+                    ? 'rgba(255,255,255,0.60)'
+                    : 'rgba(255,255,255,0.95)',
+                }}
+              >
                 {input}
               </span>
-              <div className="flex-shrink-0">
-                <AnimatePresence mode="wait">
-                  {isResolving && (
-                    <motion.div key="spinner" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
-                      <Loader2 className="w-7 h-7 text-white/40 animate-spin" />
-                    </motion.div>
-                  )}
-                  {!isResolving && resolved && (
-                    <motion.div key="check" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} transition={EASE_SPRING}>
-                      <Check className="w-7 h-7 text-white" />
-                    </motion.div>
-                  )}
-                  {!isResolving && error && (
-                    <motion.div key="error" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
-                      <X className="w-7 h-7 text-red-300" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            ) : (
+              <div className="flex items-center">
+                <span
+                  className="font-clash font-bold text-center"
+                  style={{
+                    fontSize: 'clamp(2.25rem, 8vw, 4rem)',
+                    letterSpacing: '-0.02em',
+                    color: 'rgba(255,255,255,0.20)',
+                  }}
+                >
+                  {reducedMotion ? EXAMPLE_NAMES[0] : placeholder}
+                </span>
+                {!reducedMotion && (
+                  <motion.span
+                    className="inline-block ml-[3px] flex-shrink-0"
+                    style={{
+                      width: 3,
+                      height: '0.85em',
+                      borderRadius: 1,
+                      background: BRAND_BLUE,
+                      opacity: 0.6,
+                    }}
+                    animate={{ opacity: [0.6, 0] }}
+                    transition={{ duration: 0.55, repeat: Infinity, repeatType: 'reverse' }}
+                  />
+                )}
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <span className="font-clash font-bold text-4xl sm:text-5xl md:text-6xl text-white/20">
-                {reducedMotion ? 'alice.qf' : placeholder}
-              </span>
-              {!reducedMotion && (
-                <motion.span
-                  className="inline-block w-[3px] h-[1em] bg-white/20 ml-1 font-clash text-5xl"
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ duration: 0.6, repeat: Infinity, repeatType: 'reverse' }}
-                />
-              )}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Underline */}
-        <motion.div
-          className="h-px mt-4 mx-auto"
-          style={{ maxWidth: '80%' }}
-          animate={{
-            backgroundColor: error
-              ? 'rgba(229,72,77,0.8)'
-              : resolved
-                ? ['rgba(0,64,255,0.8)', 'rgba(255,255,255,0.9)']
-                : 'rgba(255,255,255,0.15)',
-          }}
-          transition={{
-            duration: resolved && !error ? 0.6 : 0.3,
-            ease: EASE_OUT_EXPO,
-          }}
-        />
+          {/* ── Sapphire underline — runs wave on resolution, turns amber on error ── */}
+          <motion.div
+            style={{
+              width: 'clamp(200px, 70%, 400px)',
+              height: 2,
+              borderRadius: 1,
+              marginTop: 12,
+            }}
+            animate={{
+              backgroundColor: error
+                ? 'rgba(245,158,11,0.70)'
+                : resolved
+                  ? BRAND_BLUE
+                  : 'rgba(0,64,255,0.30)',
+              scaleX: resolved && !error ? [0.6, 1] : 1,
+            }}
+            transition={{
+              backgroundColor: { duration: 0.3, ease: EASE_OUT_EXPO },
+              scaleX:          { duration: 0.4, ease: EASE_OUT_EXPO },
+            }}
+          />
+
+          {/* ── Error text — amber, Satoshi 13px, inline below underline ── */}
+          <AnimatePresence>
+            {error && (
+              <motion.p
+                className="font-satoshi mt-2 text-center"
+                style={{ fontSize: 13, color: 'rgba(245,158,11,0.85)' }}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1,  y: 0  }}
+                exit={{    opacity: 0,  y: -4 }}
+                transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
+          {/* ── Continue chevron › — appears below underline when resolved ── */}
+          <AnimatePresence>
+            {canContinue && (
+              <motion.button
+                className="mt-6 flex items-center gap-1 focus-ring"
+                style={{ color: 'rgba(255,255,255,0.50)' }}
+                onClick={(e) => { e.stopPropagation(); handleAdvance(); }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1,  y: 0  }}
+                exit={{    opacity: 0,  y: 6  }}
+                transition={{ ...EASE_SPRING }}
+                whileHover={{ color: 'rgba(255,255,255,0.90)' }}
+                whileTap={{ scale: 0.92 }}
+                aria-label="Continue"
+              >
+                <span style={{ fontSize: '1.75rem', lineHeight: 1 }}>›</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
       </div>
-
-      {/* Continue button */}
-      <AnimatePresence>
-        {canContinue && (
-          <motion.button
-            className="mt-10 flex items-center gap-2 focus-ring"
-            style={{ color: 'rgba(255,255,255,0.5)' }}
-            onClick={(e) => {
-              e.stopPropagation()
-              hapticLight()
-              goToAmount()
-            }}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={EASE_SPRING}
-            whileHover={{ color: 'rgba(255,255,255,0.9)' }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <span className="font-satoshi font-medium text-base">Continue</span>
-            <span style={{ fontSize: '1.2rem' }}>›</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };
