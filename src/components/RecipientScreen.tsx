@@ -4,16 +4,14 @@ import { usePaymentStore } from '../stores/paymentStore';
 import { resolveForward, getAvatar } from '../utils/qfpay';
 import { detectAddressType, ss58ToEvmAddress } from '../utils/address';
 import { useWalletStore } from '../stores/walletStore';
-import { Loader2, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Loader2, Check, X } from 'lucide-react';
 import { hapticLight, hapticDouble } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-
-const EXAMPLE_NAMES = ['memechi.qf', 'alice.qf', 'spin.qf', 'satoshi.qf', 'dev.qf'];
-const TYPE_SPEED = 80;
-const DELETE_SPEED = 40;
-const PAUSE_AFTER_TYPE = 1500;
-const PAUSE_AFTER_DELETE = 300;
+import {
+  EXAMPLE_NAMES, TYPE_SPEED, DELETE_SPEED,
+  PAUSE_AFTER_TYPE, PAUSE_AFTER_DELETE
+} from '../lib/recipientDemoNames';
 
 export const RecipientScreen = () => {
   const {
@@ -172,35 +170,88 @@ export const RecipientScreen = () => {
   return (
     <motion.div
       className="flex flex-col items-center justify-center min-h-screen px-6 cursor-text"
-      initial={{ opacity: 0, x: 60 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -60 }}
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
       onClick={handleScreenTap}
     >
       {/* Back button */}
       <motion.button
-        className="fixed top-5 left-5 z-50 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] backdrop-blur-md transition-all duration-200 focus-ring"
-        onClick={(e) => { e.stopPropagation(); hapticLight(); goBackToIdle(); }}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2, ease: EASE_OUT_EXPO }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        className="fixed top-5 left-5 z-50 text-white/25 hover:text-white/50 transition-colors"
+        style={{ fontSize: '1.5rem', lineHeight: 1 }}
+        onClick={(e) => { e.stopPropagation(); hapticLight(); goBackToIdle() }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        whileTap={{ scale: 0.9 }}
       >
-        <ArrowLeft className="w-[18px] h-[18px] text-white/40" />
+        ‹
       </motion.button>
 
-      <motion.p
-        className="font-satoshi text-white/40 text-sm uppercase tracking-widest mb-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, ease: EASE_OUT_EXPO }}
-      >
-        Send to
-      </motion.p>
 
       <div className="relative w-full max-w-lg">
+        {/* Resolved identity display - ABOVE input */}
+        <AnimatePresence>
+          {resolved && recipientName && !error && (
+            <motion.div
+              className="flex flex-col items-center mb-6"
+              initial={{ opacity: 0, scale: 0.5, filter: 'blur(8px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+            >
+              {/* Avatar — large, above input */}
+              <div className="relative mb-3">
+                {recipientAvatar ? (
+                  <img
+                    src={recipientAvatar}
+                    alt={recipientName}
+                    className="w-16 h-16 rounded-full object-cover border border-white/20"
+                    onLoad={() => setAvatarLoaded(true)}
+                    style={{ opacity: avatarLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.08)' }}>
+                    <span className="font-clash font-bold text-2xl text-white">
+                      {recipientName[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+
+                {/* Single pulse ring — plays once on mount */}
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{ border: '1px solid rgba(0,64,255,0.4)' }}
+                  initial={{ scale: 1, opacity: 0.4 }}
+                  animate={{ scale: 1.5, opacity: 0 }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                />
+
+                {/* Continuous breathing */}
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{ border: '1px solid rgba(0,64,255,0.2)' }}
+                  animate={{ scale: [1, 1.08, 1] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              </div>
+
+              {/* Name below avatar */}
+              <motion.p
+                className="font-satoshi font-medium text-sm"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3, ease: EASE_OUT_EXPO }}
+              >
+                {recipientName}
+                <span style={{ color: 'rgba(0,64,255,0.85)' }}>.qf</span>
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Hidden real input */}
         <input
           ref={inputRef}
@@ -269,7 +320,7 @@ export const RecipientScreen = () => {
           style={{ maxWidth: '80%' }}
           animate={{
             backgroundColor: error
-              ? '#E5484D'
+              ? 'rgba(229,72,77,0.8)'
               : resolved
                 ? ['rgba(0,64,255,0.8)', 'rgba(255,255,255,0.9)']
                 : 'rgba(255,255,255,0.15)',
@@ -280,116 +331,28 @@ export const RecipientScreen = () => {
           }}
         />
 
-        {/* ── RESOLVED IDENTITY CARD ── */}
-        {/* This is the key new element — when a .qf name resolves, we show */}
-        {/* the avatar + name as a confirmed identity, not just text feedback */}
-        <div aria-live="polite" aria-atomic="true">
-          <AnimatePresence>
-            {resolved && recipientName && !error && (
-              <motion.div
-                className="flex items-center justify-center gap-3 mt-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-              >
-                {/* Recipient avatar — THE product moment — spring overshoot */}
-                <div className="relative">
-                  {recipientAvatar ? (
-                    <motion.div
-                      className="w-10 h-10 rounded-full overflow-hidden border border-white/20"
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{
-                        scale: avatarLoaded ? 1 : 0,
-                        opacity: avatarLoaded ? 1 : 0,
-                      }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    >
-                      <img
-                        src={recipientAvatar}
-                        alt={recipientName}
-                        className="w-full h-full object-cover"
-                        onLoad={() => setAvatarLoaded(true)}
-                      />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    >
-                      <span className="font-clash font-semibold text-sm text-white">
-                        {recipientName[0].toUpperCase()}
-                      </span>
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* Name slides in from behind the avatar */}
-                <motion.div
-                  className="flex items-center gap-1.5"
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15, duration: 0.35, ease: EASE_OUT_EXPO }}
-                >
-                  <span className="font-satoshi font-medium text-white text-base">
-                    {recipientName}
-                  </span>
-                  <span className="font-satoshi text-white/50 text-base">.qf</span>
-                </motion.div>
-              </motion.div>
-            )}
-
-            {/* Non-QNS address resolved — show truncated address */}
-            {resolved && !recipientName && recipientAddress && !error && (
-              <motion.p
-                className="text-center font-mono text-white/50 text-sm mt-4"
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-              >
-                {recipientAddress.slice(0, 10)}...{recipientAddress.slice(-6)}
-              </motion.p>
-            )}
-
-            {/* Error feedback */}
-            {error && (
-              <motion.p
-                key="error-msg"
-                className="text-center font-satoshi text-red-300 text-sm mt-4"
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                transition={{ duration: 0.2 }}
-              >
-                {error}
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </div>
       </div>
 
-      {/* Continue button — upgraded from bare arrow to pill */}
+      {/* Continue button */}
       <AnimatePresence>
         {canContinue && (
           <motion.button
-            className="mt-14 flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 transition-all focus-ring"
+            className="mt-10 flex items-center gap-2 focus-ring"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
             onClick={(e) => {
-              e.stopPropagation();
-              hapticLight();
-              goToAmount();
+              e.stopPropagation()
+              hapticLight()
+              goToAmount()
             }}
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
+            exit={{ opacity: 0, y: 8 }}
             transition={EASE_SPRING}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ color: 'rgba(255,255,255,0.9)' }}
+            whileTap={{ scale: 0.95 }}
           >
-            <span className="font-satoshi font-medium text-white text-base">Continue</span>
-            <ArrowRight className="w-4 h-4 text-white/70" />
+            <span className="font-satoshi font-medium text-base">Continue</span>
+            <span style={{ fontSize: '1.2rem' }}>›</span>
           </motion.button>
         )}
       </AnimatePresence>

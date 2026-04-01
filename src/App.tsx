@@ -10,12 +10,13 @@ import { AmountScreen } from './components/AmountScreen';
 import { ConfirmScreen } from './components/ConfirmScreen';
 import { AnimationSequence } from './components/AnimationSequence';
 import { Toast } from './components/Toast';
-import { LogOut, WifiOff } from 'lucide-react';
+import { ConnectedPill } from './components/ConnectedPill';
+import { WifiOff } from 'lucide-react';
 import { EASE_OUT_EXPO } from './lib/animations';
 import { BG_PRIMARY, BRAND_BLUE_DEEP } from './lib/colors';
 
 function App() {
-  const { address, disconnect } = useWalletStore();
+  const { address } = useWalletStore();
   const { phase } = usePaymentStore();
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
@@ -41,7 +42,6 @@ function App() {
 
   const isAnimating =
     phase === 'burn' || phase === 'sending' || phase === 'success';
-  const showLogout = !!address && !isAnimating;
 
   const getScreen = (): { key: string; element: React.ReactNode } => {
     if (!address) {
@@ -93,22 +93,18 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* ── Logout button ── */}
+      {/* ── Connected pill — session indicator, always top-right when connected ── */}
       <AnimatePresence>
-        {showLogout && (
-          <motion.button
-            className="fixed top-5 right-5 z-50 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] backdrop-blur-md transition-all duration-200 focus-ring"
-            onClick={disconnect}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            title="Disconnect wallet"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+        {!!address && !isAnimating && (
+          <motion.div
+            className="fixed top-4 right-4 z-50"
+            initial={{ opacity: 0, scale: 0.9, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -4 }}
+            transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
           >
-            <LogOut className="w-4 h-4 text-white/40 transition-colors group-hover:text-white/60" />
-          </motion.button>
+            <ConnectedPill />
+          </motion.div>
         )}
       </AnimatePresence>
 

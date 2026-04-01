@@ -111,6 +111,20 @@ input:-webkit-autofill:focus {
   50% { opacity: 0.06; }
 }
 
+/* Network scene — pill entrance on mount */
+@keyframes pill-emerge {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
 .animate-shimmer-rotate {
   animation: shimmer-rotate 4s linear infinite;
 }
