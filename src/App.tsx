@@ -41,7 +41,8 @@ function App() {
   };
 
   const isAnimating =
-    phase === 'burn' || phase === 'sending' || phase === 'success';
+    phase === 'burn' || phase === 'sending' || phase === 'success'
+    || phase === 'preview' || phase === 'broadcasting';
 
   const getScreen = (): { key: string; element: React.ReactNode } => {
     if (!address) {

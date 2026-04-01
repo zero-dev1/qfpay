@@ -202,7 +202,7 @@ export const RecipientScreen = () => {
               transition={{ type: 'spring', stiffness: 300, damping: 22 }}
             >
               {/* Avatar — large, above input */}
-              <div className="relative mb-3">
+              <motion.div layoutId="recipient-avatar" className="relative mb-3">
                 {recipientAvatar ? (
                   <img
                     src={recipientAvatar}
@@ -236,7 +236,7 @@ export const RecipientScreen = () => {
                   animate={{ scale: [1, 1.08, 1] }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                 />
-              </div>
+              </motion.div>
 
               {/* Name below avatar */}
               <motion.p

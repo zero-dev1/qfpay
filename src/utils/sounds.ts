@@ -14,11 +14,16 @@ function getAudioContext(): AudioContext {
   return audioCtx;
 }
 
+function isSoundEnabled(): boolean {
+  return localStorage.getItem('qfpay-sound-enabled') !== 'false'
+}
+
 /**
  * Burn sound — low rumble with crackle, fading out
  * Evokes destruction/dissolve
  */
 export function playBurnSound(): void {
+  if (!isSoundEnabled()) return
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
@@ -59,6 +64,7 @@ export function playBurnSound(): void {
  * Evokes movement/transfer
  */
 export function playSendSound(): void {
+  if (!isSoundEnabled()) return
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
@@ -88,6 +94,7 @@ export function playSendSound(): void {
  * Clean, premium, satisfying
  */
 export function playSuccessSound(): void {
+  if (!isSoundEnabled()) return
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
