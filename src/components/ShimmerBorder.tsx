@@ -1,22 +1,11 @@
 import { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
+import type { ShimmerBorderRef, ShimmerBorderProps } from '../types/ceremony';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Local Types ───────────────────────────────────────────────────────────────
 
 type ShimmerColor = 'sapphire' | 'crimson';
 type ShimmerSpeed = 'ambient' | 'confirm' | 'fast';
 type ShimmerMode = 'trace' | 'bloom' | 'hold' | 'flood' | 'drain';
-
-export interface ShimmerBorderRef {
-  setMode: (mode: ShimmerMode) => void;
-  setColor: (color: ShimmerColor) => void;
-  setSpeed: (speed: ShimmerSpeed) => void;
-  flood: () => Promise<void>;
-  drain: () => Promise<void>;
-}
-
-interface ShimmerBorderProps {
-  borderRadius?: number;
-}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 

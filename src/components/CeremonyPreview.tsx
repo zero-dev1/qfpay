@@ -1,7 +1,8 @@
 import { useRef } from 'react';
-import ShimmerBorder, { type ShimmerBorderRef } from './ShimmerBorder';
+import ShimmerBorder from './ShimmerBorder';
 import { CeremonySequence } from './CeremonySequence';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import type { ShimmerBorderRef } from '../types/ceremony';
 
 /**
  * CeremonyPreview — The glass panel on the disconnected screen.

@@ -133,7 +133,9 @@ input:-webkit-autofill:focus {
   animation: shimmer-rotate 1.5s linear infinite;
 }
 
-/* ─── Shimmer border light beam ─── */
+/* ─── Ceremony-specific CSS keyframes and utilities ─── */
+
+/* Shimmer rotation — uses @property for GPU compositing */
 @property --shimmer-angle {
   syntax: '<angle>';
   initial-value: 0deg;
@@ -141,60 +143,53 @@ input:-webkit-autofill:focus {
 }
 
 @keyframes shimmer-rotate {
-  to {
-    --shimmer-angle: 360deg;
-  }
+  to { --shimmer-angle: 360deg; }
 }
 
-/* Flood ripple — scale from center */
+/* Cursor blink */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+/* Directional pulse for preview trailing line */
+@keyframes pulse-down {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-pulse-down {
+  animation: pulse-down 1.5s ease-in-out infinite;
+}
+
+/* Flood ripple — center outward */
 @keyframes ceremony-flood {
-  from {
-    transform: scale(0);
-    opacity: 0.8;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes ceremony-drain {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-  to {
-    transform: scale(0);
-    opacity: 0.8;
-  }
+  from { transform: scale(0); opacity: 0.8; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .animate-ceremony-flood {
   animation: ceremony-flood 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Drain — reverse of flood */
+@keyframes ceremony-drain {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0); opacity: 0; }
+}
+
 .animate-ceremony-drain {
-  animation: ceremony-drain 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: ceremony-drain 600ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
 
-/* ─── Cursor and pulse animations ─── */
-@keyframes cursor-blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-@keyframes pulse-down {
-  0% { transform: translateY(-100%); }
-  50% { transform: translateY(0); }
-  100% { transform: translateY(100%); }
-}
-
-.animate-cursor-blink {
-  animation: cursor-blink 1s ease-in-out infinite;
-}
-
-.animate-pulse-down {
-  animation: pulse-down 1.4s ease-in-out infinite;
+/* Shimmer button always-on sweep */
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* ─── Panel aspect ratio variables ─── */

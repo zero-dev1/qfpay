@@ -1,44 +1,15 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { delay } from '../utils/delay';
-import type { ShimmerBorderRef } from './ShimmerBorder';
+import type { CeremonyPhase, BorderState, CeremonyLoop, CeremonySequenceProps, ShimmerBorderRef } from '../types/ceremony';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
-
-interface CeremonyLoop {
-  name: string;         // e.g. "satoshi.qf"
-  amount: number;       // e.g. 1000 (raw, no commas)
-  sender: string;       // e.g. "vitalik.qf"
-}
 
 const CEREMONY_DATA: CeremonyLoop[] = [
   { name: 'satoshi.qf', amount: 1000, sender: 'vitalik.qf' },
   { name: 'alice.qf', amount: 250, sender: 'bob.qf' },
   { name: 'nakamoto.qf', amount: 5000, sender: 'hal.qf' },
 ];
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type CeremonyPhase = 
-  | { type: 'name'; text: string; cursor: boolean }
-  | { type: 'amount'; text: string; cursor: boolean }
-  | { type: 'transition'; direction: 'forward' | 'backward' }
-  | { type: 'preview'; sender: string; receiver: string; amount: number }
-  | { type: 'burn'; amount: number }
-  | { type: 'sent'; amount: number }
-  | { type: 'complete' }
-  | { type: 'empty' };
-
-type BorderState = {
-  mode: 'trace' | 'bloom' | 'hold' | 'flood' | 'drain';
-  color: 'sapphire' | 'crimson';
-  speed: 'ambient' | 'confirm' | 'fast';
-};
-
-interface CeremonySequenceProps {
-  shimmerRef: React.RefObject<ShimmerBorderRef | null>;
-  reducedMotion: boolean;
-}
 
 // ─── Directional transition variants ─────────────────────────────────────────
 
@@ -173,27 +144,6 @@ function renderPhaseContent(phase: CeremonyPhase) {
   }
 }
 
-function StaticLayout() {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center gap-5">
-      <span className="font-clash font-bold text-[clamp(1.8rem,5vw,2.75rem)] text-[#F0F2F8]">
-        satoshi.qf
-      </span>
-      <span className="font-clash font-bold text-[clamp(2.2rem,6vw,3.25rem)] text-[#F0F2F8]">
-        1,000 <span className="text-[rgba(122,139,171,0.5)]">QF</span>
-      </span>
-      <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-        <path
-          d="M16 33L27 44L48 20"
-          stroke="#FFFFFF"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
-  );
-}
 
 // ─── Async ceremony loop ─────────────────────────────────────────────────────
 
@@ -307,7 +257,7 @@ export function CeremonySequence({
   const [phase, setPhase] = useState<CeremonyPhase>({ type: 'empty' });
 
   useEffect(() => {
-    // Reduced motion — show static layout, no loop
+    // CORRECT — hook always runs, guards internally
     if (reducedMotion) return;
     
     const controller = new AbortController();
@@ -343,9 +293,21 @@ export function CeremonySequence({
     return () => controller.abort();
   }, [reducedMotion, shimmerRef]);
 
-  // ── Reduced motion: static ──
+  // ── Reduced motion: static snapshot ──
   if (reducedMotion) {
-    return <StaticLayout />;
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-2">
+        <span className="font-clash text-[clamp(14px,2.5vw,18px)] text-[rgba(122,139,171,0.7)]">
+          vitalik.qf
+        </span>
+        <span className="font-clash text-[clamp(28px,5vw,40px)] font-semibold text-[#F0F2F8]">
+          1,000 <span className="text-[rgba(122,139,171,0.5)] text-[0.5em]">QF</span>
+        </span>
+        <span className="font-clash text-[clamp(14px,2.5vw,18px)] text-[#F0F2F8]">
+          satoshi.qf
+        </span>
+      </div>
+    );
   }
 
   return (
