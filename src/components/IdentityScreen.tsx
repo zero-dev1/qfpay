@@ -5,7 +5,7 @@ import { usePaymentStore } from '../stores/paymentStore';
 import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
 import { hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
-import { BRAND_BLUE, SUCCESS_GREEN } from '../lib/colors';
+import { BRAND_BLUE, SUCCESS_GREEN, BG_PRIMARY } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { ShimmerButton } from './hero/ShimmerButton';
 import {
@@ -15,7 +15,11 @@ import {
 
 type CeremonyPhase = 'blooming' | 'naming' | 'contracting' | 'settled';
 
-export const IdentityScreen = () => {
+interface IdentityScreenProps {
+  onCeremonyComplete?: () => void;
+}
+
+export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
   const { qnsName, address, ss58Address, avatarUrl } = useWalletStore();
   const { goToRecipient } = usePaymentStore();
   const reducedMotion = useReducedMotion();
@@ -24,6 +28,10 @@ export const IdentityScreen = () => {
 
   // ── Ceremony phase machine ──
   const [ceremonyPhase, setCeremonyPhase] = useState<CeremonyPhase>('blooming');
+
+  // Tracks whether the ceremony has already been triggered in this mount cycle.
+  // Prevents re-running if qnsName reference changes after ceremony has fired.
+  const ceremonyFired = useRef(false);
 
   // ── Balance ──
   const [balance,        setBalance]        = useState<bigint | null>(null);
@@ -61,19 +69,28 @@ export const IdentityScreen = () => {
     return () => clearInterval(id);
   }, [balance]);
 
-  // ── Ceremony sequencing — plays every time the screen mounts ──
-  // Timing: blooming 0–600ms · naming 600–1200ms · contracting 1200–1800ms · settled 1800ms+
+  // ── Ceremony sequencing ──
+  // Fires once — when qnsName first becomes truthy in this mount cycle.
+  // Dependency on qnsName (not []) so it correctly re-evaluates after the async
+  // QNS resolution that happens after wallet connect.
   useEffect(() => {
-    if (reducedMotion || !hasQNS) {
+    // Nothing to do until qnsName resolves
+    if (!qnsName) return;
+    // Only trigger the ceremony once per mount
+    if (ceremonyFired.current) return;
+    ceremonyFired.current = true;
+
+    if (reducedMotion) {
       setCeremonyPhase('settled');
       return;
     }
+
+    // Timing: blooming 0–600ms · naming 600–1200ms · contracting 1200–1800ms · settled 1800ms+
     const t1 = setTimeout(() => setCeremonyPhase('naming'),      600);
     const t2 = setTimeout(() => setCeremonyPhase('contracting'), 1200);
     const t3 = setTimeout(() => setCeremonyPhase('settled'),     1800);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [qnsName, reducedMotion]);
 
   // ── Auto-typing demo — only when settled ──
   useEffect(() => {
@@ -108,13 +125,35 @@ export const IdentityScreen = () => {
     return () => { if (animRef.current) clearTimeout(animRef.current); };
   }, [ceremonyPhase, hasQNS, reducedMotion]);
 
+  // ── Notify parent when ceremony is fully done ──
+  useEffect(() => {
+    if (ceremonyPhase === 'settled') {
+      onCeremonyComplete?.();
+    }
+  }, [ceremonyPhase, onCeremonyComplete]);
+
   const handleScreenTap = () => {
     if (!hasQNS) return;
     hapticMedium();
     goToRecipient();
   };
 
+  // ── Loading state ──────────────────────────────────────────────────────────
+  // address is set but qnsName hasn't resolved yet.
+  // Render an invisible placeholder so the ceremony fires correctly once
+  // qnsName arrives, rather than immediately jumping to the no-QNS branch.
+  if (address && !qnsName) {
+    return (
+      <div
+        className="min-h-screen w-full"
+        style={{ background: BG_PRIMARY }}
+      />
+    );
+  }
+
   // ── No QNS fork ──────────────────────────────────────────────────────────
+  // Only reached when qnsName has definitively resolved to null (i.e. the
+  // wallet is connected and PAPI confirmed no name for this address).
 
   if (!hasQNS) {
     return (
@@ -204,10 +243,7 @@ export const IdentityScreen = () => {
             className="flex flex-col items-center text-center"
             exit={{
               opacity: 0,
-              scale: 0.55,
-              x: '38vw',
-              y: '-32vh',
-              transition: { duration: 0.55, ease: EASE_OUT_EXPO },
+              transition: { duration: 0.4, ease: EASE_OUT_EXPO },
             }}
           >
             {/* Avatar — ~80px, spring entrance from scale 0.6 and blur 8px */}
@@ -217,7 +253,8 @@ export const IdentityScreen = () => {
               animate={{ scale: 1,   opacity: 1, filter: 'blur(0px)' }}
               transition={{ ...EASE_SPRING }}
             >
-              <div
+              <motion.div
+                layoutId="user-avatar"
                 className="relative rounded-full overflow-hidden flex-shrink-0"
                 style={{
                   width: 80, height: 80,
@@ -244,7 +281,7 @@ export const IdentityScreen = () => {
                     </span>
                   </div>
                 )}
-              </div>
+              </motion.div>
 
               {/* Presence dot */}
               <div
@@ -261,6 +298,7 @@ export const IdentityScreen = () => {
             <AnimatePresence>
               {(ceremonyPhase === 'naming' || ceremonyPhase === 'contracting') && (
                 <motion.h1
+                  layoutId="user-name"
                   className="font-clash font-bold tracking-tight mb-3"
                   style={{ fontSize: 'clamp(2rem, 6vw, 3.5rem)', letterSpacing: '-0.02em' }}
                   initial={{ opacity: 0, y: 12 }}

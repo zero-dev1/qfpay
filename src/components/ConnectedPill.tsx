@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
 import { useWalletStore } from '../stores/walletStore';
 import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
 import { hapticLight, hapticMedium } from '../utils/haptics';
@@ -83,7 +84,11 @@ export function ConnectedPill() {
         }}
       >
         {/* Avatar — 40px per spec */}
-        <div className="relative flex-shrink-0" style={{ width: 40, height: 40 }}>
+        <motion.div
+          layoutId="user-avatar"
+          className="relative flex-shrink-0 rounded-full overflow-hidden"
+          style={{ width: 40, height: 40 }}
+        >
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -107,10 +112,11 @@ export function ConnectedPill() {
               border: '1.5px solid #060A14',
             }}
           />
-        </div>
+        </motion.div>
 
         {/* Name · .qf */}
-        <span
+        <motion.span
+          layoutId="user-name"
           className="font-satoshi font-medium text-sm whitespace-nowrap"
           style={{ color: 'rgba(255,255,255,0.90)' }}
         >
@@ -118,7 +124,7 @@ export function ConnectedPill() {
           {qnsName && (
             <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
           )}
-        </span>
+        </motion.span>
 
         {/* Chevron — decorative, dropdown opened by pill onClick */}
         <span

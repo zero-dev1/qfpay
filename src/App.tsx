@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useWalletStore } from './stores/walletStore';
 import { usePaymentStore } from './stores/paymentStore';
@@ -19,6 +19,12 @@ function App() {
   const { address } = useWalletStore();
   const { phase } = usePaymentStore();
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [ceremonyComplete, setCeremonyComplete] = useState(false);
+
+  // ── Reset ceremony on disconnect so next connection plays the full sequence ──
+  useEffect(() => {
+    if (!address) setCeremonyComplete(false);
+  }, [address]);
 
   // Network status listener
   useEffect(() => {
@@ -61,16 +67,17 @@ function App() {
       case 'success':
         return { key: 'animation', element: <AnimationSequence /> };
       case 'error':
-        return { key: 'error', element: <IdentityScreen /> };
+        return { key: 'error', element: <IdentityScreen onCeremonyComplete={() => setCeremonyComplete(true)} /> };
       case 'idle':
       default:
-        return { key: 'identity', element: <IdentityScreen /> };
+        return { key: 'identity', element: <IdentityScreen onCeremonyComplete={() => setCeremonyComplete(true)} /> };
     }
   };
 
   const { key, element } = getScreen();
 
   return (
+    <LayoutGroup>
     <motion.div
       className="min-h-screen w-full relative overflow-hidden"
       animate={{ backgroundColor: getBackgroundColor() }}
@@ -96,7 +103,7 @@ function App() {
 
       {/* ── Connected pill — session indicator, always top-right when connected ── */}
       <AnimatePresence>
-        {!!address && !isAnimating && (
+        {!!address && !isAnimating && ceremonyComplete && (
           <motion.div
             className="fixed top-4 right-4 z-50"
             initial={{ opacity: 0, scale: 0.9, y: -4 }}
@@ -127,6 +134,7 @@ function App() {
       <WalletModal />
       <Toast />
     </motion.div>
+    </LayoutGroup>
   );
 }
 
