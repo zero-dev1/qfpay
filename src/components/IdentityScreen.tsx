@@ -94,10 +94,22 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
   // ── Loading — waiting for QNS resolution ──
   if (address && !qnsName) {
     return (
-      <div
-        className="min-h-screen w-full"
+      <motion.div
+        className="flex flex-col items-center justify-center min-h-screen w-full"
         style={{ background: BG_PRIMARY }}
-      />
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+      >
+        <motion.p
+          className="font-satoshi text-sm"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
+          animate={{ opacity: [0.35, 0.6, 0.35] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          Looking for your .qf name…
+        </motion.p>
+      </motion.div>
     );
   }
 

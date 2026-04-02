@@ -241,14 +241,12 @@ export const RecipientScreen = () => {
 
   return (
     <motion.div
-      className={`flex flex-col items-center justify-center min-h-screen px-6 ${
-        canContinue ? 'cursor-pointer' : 'cursor-text'
-      }`}
+      className="flex flex-col items-center justify-center min-h-screen px-6 cursor-text"
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
-      onClick={canContinue ? handleAdvance : handleScreenTap}
+      onClick={handleScreenTap}
     >
       {/* NO BACK BUTTON — this is the first step. 
           User can disconnect via ConnectedPill in top-right corner. */}

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useWalletStore } from './stores/walletStore';
 import { usePaymentStore } from './stores/paymentStore';
 import { DisconnectedView } from './components/DisconnectedView';
@@ -50,6 +50,8 @@ function App() {
     phase === 'burn' || phase === 'sending' || phase === 'success'
     || phase === 'preview' || phase === 'broadcasting';
 
+  const handleCeremonyComplete = useCallback(() => setCeremonyComplete(true), []);
+
   const getScreen = (): { key: string; element: React.ReactNode } => {
     if (!address) {
       return { key: 'disconnected', element: <DisconnectedView /> };
@@ -67,10 +69,10 @@ function App() {
       case 'success':
         return { key: 'animation', element: <AnimationSequence /> };
       case 'error':
-        return { key: 'error', element: <IdentityScreen onCeremonyComplete={() => setCeremonyComplete(true)} /> };
+        return { key: 'error', element: <IdentityScreen onCeremonyComplete={handleCeremonyComplete} /> };
       case 'idle':
       default:
-        return { key: 'identity', element: <IdentityScreen onCeremonyComplete={() => setCeremonyComplete(true)} /> };
+        return { key: 'identity', element: <IdentityScreen onCeremonyComplete={handleCeremonyComplete} /> };
     }
   };
 
