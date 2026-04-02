@@ -1,22 +1,15 @@
 import { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
 import type { ShimmerBorderRef, ShimmerBorderProps } from '../types/ceremony';
 
-// ─── Local Types ───────────────────────────────────────────────────────────────
-
 type ShimmerColor = 'sapphire' | 'crimson';
 type ShimmerSpeed = 'ambient' | 'confirm' | 'fast';
 type ShimmerMode = 'trace' | 'bloom' | 'hold' | 'flood' | 'drain';
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
   ({ borderRadius = 24 }, ref) => {
     const [color, setColorState] = useState<ShimmerColor>('sapphire');
     const [speed, setSpeedState] = useState<ShimmerSpeed>('ambient');
     const [mode, setModeState] = useState<ShimmerMode>('trace');
-    const [isAnimating, setIsAnimating] = useState(false);
-
-    // ── Imperative API ─────────────────────────────────────────────────
 
     const setMode = useCallback((newMode: ShimmerMode) => {
       setModeState(newMode);
@@ -34,9 +27,7 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
       (): Promise<void> =>
         new Promise((resolve) => {
           setModeState('flood');
-          setIsAnimating(true);
           setTimeout(() => {
-            setIsAnimating(false);
             resolve();
           }, 500);
         }),
@@ -47,12 +38,10 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
       (): Promise<void> =>
         new Promise((resolve) => {
           setModeState('drain');
-          setIsAnimating(true);
           setTimeout(() => {
-            setIsAnimating(false);
-            setModeState('trace'); // Return to trace after drain
+            setModeState('trace');
             resolve();
-          }, 500);
+          }, 600);
         }),
       []
     );
@@ -61,43 +50,45 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
       setMode, setColor, setSpeed, flood, drain,
     ]);
 
-    // ── Derived styles ─────────────────────────────────────────────────
+    // ── Derived values ───────────────────────────────────────────────
 
-    const duration = speed === 'ambient' ? '6s' 
-      : speed === 'confirm' ? '1.2s' 
-      : '0.8s';
+    const shimmerColor =
+      color === 'crimson'
+        ? 'rgba(220, 38, 38, 0.8)'
+        : 'rgba(0, 64, 255, 0.7)';
 
-    const shimmerColor = color === 'crimson' 
-      ? 'rgba(220, 38, 38, 0.8)' 
-      : 'rgba(0, 64, 255, 0.7)';
+    // The faint trail is almost invisible — just a whisper so the border
+    // doesn't pop in/out harshly, but NOT enough to outline the whole panel
+    const faintColor =
+      color === 'crimson'
+        ? 'rgba(220, 38, 38, 0.02)'
+        : 'rgba(0, 64, 255, 0.02)';
 
-    const faintColor = color === 'crimson'
-      ? 'rgba(220, 38, 38, 0.05)'
-      : 'rgba(0, 64, 255, 0.05)';
-
-    // The concentrated light beam gradient - small bright arc (~30deg)
+    // Beam: bright ~30deg arc, rest is TRANSPARENT (not faintColor)
     const beamGradient = `conic-gradient(
       from var(--shimmer-angle),
       transparent 0deg,
-      transparent 330deg,
+      transparent 325deg,
       ${shimmerColor} 345deg,
+      ${shimmerColor} 350deg,
       transparent 360deg
     )`;
 
-    // Faint trail gradient for trace mode
+    // Trail: very faint full ring so edges don't vanish completely
+    // but nowhere near visible enough to read as an outlined border
     const trailGradient = `conic-gradient(
       from var(--shimmer-angle),
       ${faintColor} 0deg,
-      ${faintColor} 330deg,
-      transparent 345deg,
+      ${faintColor} 320deg,
+      transparent 340deg,
       transparent 360deg
     )`;
 
-    // ── Mode rendering ────────────────────────────────────────────────
+    // ── Renderers ────────────────────────────────────────────────────
 
     const renderTraceMode = () => (
       <>
-        {/* Faint trail */}
+        {/* Faint trail — near-invisible persistence behind the beam */}
         <div
           className={`shimmer-beam shimmer-speed-${speed}`}
           style={{
@@ -112,9 +103,10 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
             maskComposite: 'exclude',
             WebkitMaskComposite: 'xor',
             padding: '1px',
+            transition: 'opacity 400ms ease',
           }}
         />
-        {/* Concentrated beam */}
+        {/* Concentrated beam — the flashlight */}
         <div
           className={`shimmer-beam shimmer-speed-${speed}`}
           style={{
@@ -129,16 +121,17 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
             maskComposite: 'exclude',
             WebkitMaskComposite: 'xor',
             padding: '1.5px',
-            filter: `drop-shadow(0 0 4px ${shimmerColor}40)`,
+            filter: `drop-shadow(0 0 6px ${shimmerColor}50)`,
+            transition: 'filter 400ms ease',
           }}
         />
-        {/* Outer glow */}
+        {/* Outer glow — light spill beyond the edge */}
         <div
           className={`shimmer-beam shimmer-speed-${speed}`}
           style={{
             position: 'absolute',
-            inset: -2,
-            borderRadius,
+            inset: -3,
+            borderRadius: borderRadius + 3,
             pointerEvents: 'none',
             zIndex: 0,
             background: beamGradient,
@@ -146,8 +139,9 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
             WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
             maskComposite: 'exclude',
             WebkitMaskComposite: 'xor',
-            padding: '3px',
-            filter: 'blur(12px)',
+            padding: '4px',
+            filter: 'blur(14px)',
+            opacity: 0.6,
           }}
         />
       </>
@@ -161,8 +155,8 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
           borderRadius,
           pointerEvents: 'none',
           zIndex: 1,
-          boxShadow: `0 0 0 1px ${shimmerColor}`,
-          transition: 'box-shadow 400ms ease',
+          boxShadow: `0 0 0 1.5px ${shimmerColor}, 0 0 20px ${shimmerColor}30`,
+          transition: 'box-shadow 600ms ease',
         }}
       />
     );
@@ -175,13 +169,14 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
           borderRadius,
           pointerEvents: 'none',
           zIndex: 1,
-          boxShadow: `0 0 0 1px ${shimmerColor}`,
+          boxShadow: `0 0 0 1.5px ${shimmerColor}`,
+          transition: 'box-shadow 400ms ease',
         }}
       />
     );
 
     const renderFloodMode = () => (
-      <div 
+      <div
         className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden"
         style={{ borderRadius, zIndex: 3 }}
       >
@@ -197,7 +192,7 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
     );
 
     const renderDrainMode = () => (
-      <div 
+      <div
         className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden"
         style={{ borderRadius, zIndex: 3 }}
       >
@@ -211,8 +206,6 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
         />
       </div>
     );
-
-    // ── Main render ─────────────────────────────────────────────────────
 
     return (
       <>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { delay } from '../utils/delay';
 import type { CeremonyPhase, BorderState, CeremonyLoop, CeremonySequenceProps, ShimmerBorderRef } from '../types/ceremony';
@@ -14,24 +14,24 @@ const CEREMONY_DATA: CeremonyLoop[] = [
 // ─── Directional transition variants ─────────────────────────────────────────
 
 const transitionVariants = {
-  enter: (direction: 'forward' | 'backward') => ({
+  enter: {
     opacity: 0,
-    x: direction === 'forward' ? 20 : -20,
+    x: 20,
     filter: 'blur(6px)',
-  }),
+  },
   center: {
     opacity: 1,
     x: 0,
     filter: 'blur(0px)',
   },
-  exit: (direction: 'forward' | 'backward') => ({
+  exit: {
     opacity: 0,
-    x: direction === 'forward' ? -20 : 20,
+    x: -15,
     filter: 'blur(6px)',
-  }),
+  },
 };
 
-// ─── Phase content renderer ─────────────────────────────────────────────────────
+// ─── Phase content renderer ─────────────────────────────────────────────────
 
 function renderPhaseContent(phase: CeremonyPhase) {
   switch (phase.type) {
@@ -56,7 +56,6 @@ function renderPhaseContent(phase: CeremonyPhase) {
           {phase.cursor && (
             <span className="inline-block w-[2px] h-[1.1em] bg-[#0040FF] ml-0.5 animate-cursor-blink align-middle" />
           )}
-          {/* QF label appears once typing starts, at reduced opacity */}
           {phase.text.length > 0 && (
             <span className="font-clash text-[clamp(18px,3vw,24px)] font-medium text-[rgba(122,139,171,0.5)] ml-2">
               QF
@@ -67,22 +66,21 @@ function renderPhaseContent(phase: CeremonyPhase) {
 
     case 'preview':
       return (
-        <div className="flex flex-col items-center justify-center gap-4">
-          <span className="font-clash text-[clamp(14px,2.5vw,18px)] text-[rgba(122,139,171,0.7)]">
+        <div className="flex flex-col items-center justify-center gap-3 h-full">
+          <span className="font-clash text-[clamp(13px,2.2vw,16px)] text-[rgba(122,139,171,0.7)]">
             {phase.sender}
           </span>
-          {/* Sapphire trailing line — directional pulse */}
-          <div className="w-px h-8 relative overflow-hidden">
+          <div className="w-px h-6 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0040FF] to-transparent animate-pulse-down" />
           </div>
           <span className="font-clash text-[clamp(28px,5vw,40px)] font-semibold text-[#F0F2F8]">
             {phase.amount.toLocaleString('en-US')}
             <span className="text-[rgba(122,139,171,0.5)] ml-1 text-[0.5em]">QF</span>
           </span>
-          <div className="w-px h-8 relative overflow-hidden">
+          <div className="w-px h-6 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0040FF] to-transparent animate-pulse-down" />
           </div>
-          <span className="font-clash text-[clamp(14px,2.5vw,18px)] text-[#F0F2F8]">
+          <span className="font-clash text-[clamp(13px,2.2vw,16px)] text-[#F0F2F8]">
             {phase.receiver}
           </span>
         </div>
@@ -92,8 +90,8 @@ function renderPhaseContent(phase: CeremonyPhase) {
       return (
         <div className="flex flex-col items-center justify-center gap-2">
           <span className="font-clash text-[clamp(32px,6vw,48px)] font-semibold text-[#FF2D2D]">
-            {phase.amount.toLocaleString('en-US', { 
-              minimumFractionDigits: phase.amount % 1 === 0 ? 1 : undefined 
+            {phase.amount.toLocaleString('en-US', {
+              minimumFractionDigits: phase.amount % 1 === 0 ? 1 : undefined,
             })}
           </span>
           <span className="font-clash text-[clamp(10px,1.8vw,13px)] font-medium uppercase tracking-[0.15em] text-[rgba(255,45,45,0.7)]">
@@ -130,125 +128,115 @@ function renderPhaseContent(phase: CeremonyPhase) {
               d="M10 20 L17 27 L30 13"
               initial={{ pathLength: 0 }}
               animate={{ pathLength: 1 }}
-              transition={{
-                duration: 0.5,
-                ease: [0.65, 0, 0.35, 1],
-              }}
+              transition={{ duration: 0.5, ease: [0.65, 0, 0.35, 1] }}
             />
           </svg>
         </div>
       );
 
     case 'empty':
-      return null;
+      return <div className="w-1 h-1" />;
+
+    default:
+      return <div className="w-1 h-1" />;
   }
 }
-
 
 // ─── Async ceremony loop ─────────────────────────────────────────────────────
 
 async function runCeremonyLoop(
   signal: AbortSignal,
   setPhase: (phase: CeremonyPhase) => void,
-  setBorderState: (state: BorderState) => void,
   shimmerRef: React.RefObject<ShimmerBorderRef | null>,
   loopIndex: number,
 ) {
   const data = CEREMONY_DATA[loopIndex % CEREMONY_DATA.length];
   const burnAmount = Math.round(data.amount * 10) / 10000;
-  // burnAmount for 1000 = 1.0, for 250 = 0.25, for 5000 = 5.0
-  const sentAmount = data.amount; // the intended amount (burn is additional)
+  const sentAmount = data.amount;
+
+  const shimmer = () => shimmerRef.current;
 
   // BEAT 1 — Name typing
   setPhase({ type: 'name', text: '', cursor: true });
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'ambient' });
-  
+  shimmer()?.setMode('trace');
+  shimmer()?.setColor('sapphire');
+  shimmer()?.setSpeed('ambient');
+
   for (let i = 0; i <= data.name.length; i++) {
     await delay(130, signal);
     setPhase({ type: 'name', text: data.name.slice(0, i), cursor: true });
   }
-  
+
   // Name resolved — single confident shimmer lap
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'confirm' });
-  await delay(1200, signal);  // one full lap at confirm speed
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'ambient' });
-  await delay(500, signal);   // breath
-  
-  // TRANSITION 1→2: directional dissolve
-  setPhase({ type: 'transition', direction: 'forward' });
-  await delay(400, signal);   // transition animation duration
-  
-  // BEAT 2 — Amount typing
+  shimmer()?.setSpeed('confirm');
+  await delay(1200, signal);
+  shimmer()?.setSpeed('ambient');
+  await delay(500, signal); // breath
+
+  // BEAT 2 — Amount typing (AnimatePresence handles the dissolve)
   const amountStr = data.amount.toLocaleString('en-US');
   setPhase({ type: 'amount', text: '', cursor: true });
-  
+  await delay(100, signal); // let exit/enter animate
+
   for (let i = 0; i <= amountStr.length; i++) {
-    await delay(100, signal);  // faster typing for numbers
+    await delay(100, signal);
     setPhase({ type: 'amount', text: amountStr.slice(0, i), cursor: true });
   }
-  
-  // Amount confirmed — single confident shimmer lap
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'confirm' });
+
+  // Amount confirmed
+  shimmer()?.setSpeed('confirm');
   await delay(1200, signal);
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'ambient' });
-  await delay(500, signal);   // breath
-  
-  // TRANSITION 2→3: directional dissolve
-  setPhase({ type: 'transition', direction: 'forward' });
-  await delay(400, signal);
-  
-  // BEAT 3 — Preview (sender → amount → receiver)
+  shimmer()?.setSpeed('ambient');
+  await delay(500, signal);
+
+  // BEAT 3 — Preview
   setPhase({
     type: 'preview',
     sender: data.sender,
     receiver: data.name,
     amount: data.amount,
   });
-  
-  // Bloom — entire border brightens uniformly
-  setBorderState({ mode: 'bloom', color: 'sapphire', speed: 'ambient' });
-  await delay(1800, signal);  // hold the preview with bloom
-  
-  // Release bloom — brief breath
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'ambient' });
+
+  shimmer()?.setMode('bloom');
+  await delay(1800, signal);
+  shimmer()?.setMode('trace');
+  shimmer()?.setSpeed('ambient');
   await delay(400, signal);
-  
+
   // BEAT 4 — Burn
-  setPhase({
-    type: 'burn',
-    amount: burnAmount,
-  });
-  
-  // Crimson hold — entire border tints, no tracing
-  setBorderState({ mode: 'hold', color: 'crimson', speed: 'ambient' });
-  await delay(1000, signal);  // held crimson moment
-  
-  // BEAT 5 — Sent
-  // Crimson dissolves back to sapphire (cross-fade handled by CSS transition)
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'fast' });
-  setPhase({
-    type: 'sent',
-    amount: sentAmount,
-  });
-  await delay(1400, signal);  // faster lap + hold
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'ambient' });
-  await delay(400, signal);   // breath
-  
+  setPhase({ type: 'burn', amount: burnAmount });
+  shimmer()?.setMode('hold');
+  shimmer()?.setColor('crimson');
+  await delay(1000, signal);
+
+  // BEAT 5 — Sent (crimson → sapphire cross-fade)
+  shimmer()?.setColor('sapphire');
+  shimmer()?.setMode('trace');
+  shimmer()?.setSpeed('fast');
+  setPhase({ type: 'sent', amount: sentAmount });
+  await delay(1400, signal);
+  shimmer()?.setSpeed('ambient');
+  await delay(400, signal);
+
   // BEAT 6 — Complete (checkmark + flood SIMULTANEOUSLY)
   setPhase({ type: 'complete' });
-  await delay(300, signal);   // let checkmark start drawing
-  setBorderState({ mode: 'flood', color: 'sapphire', speed: 'ambient' });
-  await delay(2000, signal);  // hold the blue flood + checkmark
-  
-  // BEAT 7 — Reset
-  setBorderState({ mode: 'drain', color: 'sapphire', speed: 'ambient' });
+  // Small head start for checkmark to begin drawing
+  await delay(200, signal);
+  // Use the imperative flood() which returns a promise
+  if (shimmer()?.flood) {
+    await shimmer()!.flood();
+  }
+  await delay(1800, signal); // hold the triumph
+
+  // BEAT 7 — Reset via imperative drain
   setPhase({ type: 'empty' });
-  await delay(800, signal);   // drain animation
-  setBorderState({ mode: 'trace', color: 'sapphire', speed: 'ambient' });
-  await delay(600, signal);   // empty breath before next loop
+  if (shimmer()?.drain) {
+    await shimmer()!.drain();
+  }
+  await delay(600, signal); // empty breath
 }
 
-// ─── Main choreography ───────────────────────────────────────────────────────
+// ─── Main component ──────────────────────────────────────────────────────────
 
 export function CeremonySequence({
   shimmerRef,
@@ -258,36 +246,26 @@ export function CeremonySequence({
   const [phaseKey, setPhaseKey] = useState(0);
   const prevPhaseType = useRef<string>('empty');
 
-  // Increment key only when phase TYPE changes (not on every text update)
+  // Increment key only when phase TYPE changes
   useEffect(() => {
     if (phase.type !== prevPhaseType.current) {
       prevPhaseType.current = phase.type;
-      setPhaseKey(prev => prev + 1);
+      setPhaseKey((prev) => prev + 1);
     }
   }, [phase.type]);
 
   useEffect(() => {
-    // CORRECT — hook always runs, guards internally
     if (reducedMotion) return;
-    
+
     const controller = new AbortController();
     let loopIndex = 0;
-    
+
     async function loop() {
       while (!controller.signal.aborted) {
         try {
           await runCeremonyLoop(
             controller.signal,
             setPhase,
-            (state) => {
-              // Update shimmer border state
-              const shimmer = shimmerRef.current;
-              if (shimmer) {
-                shimmer.setMode(state.mode);
-                shimmer.setColor(state.color);
-                shimmer.setSpeed(state.speed);
-              }
-            },
             shimmerRef,
             loopIndex,
           );
@@ -298,12 +276,11 @@ export function CeremonySequence({
         }
       }
     }
-    
+
     loop();
     return () => controller.abort();
   }, [reducedMotion, shimmerRef]);
 
-  // ── Reduced motion: static snapshot ──
   if (reducedMotion) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2">
@@ -322,17 +299,16 @@ export function CeremonySequence({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center p-6">
-      <AnimatePresence mode="wait" custom="forward">
+      <AnimatePresence mode="wait">
         <motion.div
           key={phaseKey}
-          custom="forward"
           variants={transitionVariants}
           initial="enter"
           animate="center"
           exit="exit"
           transition={{
             duration: 0.4,
-            ease: [0.25, 0.46, 0.45, 0.94],  // custom ease
+            ease: [0.25, 0.46, 0.45, 0.94],
           }}
           className="absolute inset-0 flex flex-col items-center justify-center"
         >

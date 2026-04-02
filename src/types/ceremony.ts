@@ -1,10 +1,3 @@
-/**
- * Type definitions for QFPay ceremony system
- * Defines the structure for choreography phases, border states, and ceremony data
- */
-
-// ─── Phase Types ─────────────────────────────────────────────────────────────
-
 export type CeremonyPhase =
   | { type: 'name'; text: string; cursor: boolean }
   | { type: 'amount'; text: string; cursor: boolean }
@@ -12,10 +5,7 @@ export type CeremonyPhase =
   | { type: 'burn'; amount: number }
   | { type: 'sent'; amount: number }
   | { type: 'complete' }
-  | { type: 'empty' }
-  | { type: 'transition'; direction: 'forward' | 'backward' };
-
-// ─── Border State Types ───────────────────────────────────────────────────────
+  | { type: 'empty' };
 
 export interface BorderState {
   mode: 'trace' | 'bloom' | 'hold' | 'flood' | 'drain';
@@ -23,15 +13,11 @@ export interface BorderState {
   speed: 'ambient' | 'confirm' | 'fast';
 }
 
-// ─── Ceremony Data Types ─────────────────────────────────────────────────────
-
 export interface CeremonyLoop {
   name: string;
   amount: number;
   sender: string;
 }
-
-// ─── Component Props Types ───────────────────────────────────────────────────
 
 export interface CeremonySequenceProps {
   shimmerRef: React.RefObject<ShimmerBorderRef | null>;
