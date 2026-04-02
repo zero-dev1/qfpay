@@ -1,61 +1,40 @@
-import logoMark from '../assets/logo-mark.svg';
 import { useWalletStore } from '../stores/walletStore';
 import { hapticMedium } from '../utils/haptics';
-import { ThresholdScene } from './ThresholdScene';
 import { ShimmerButton } from './hero/ShimmerButton';
+import CeremonyPreview from './CeremonyPreview';
 
 export function DisconnectedView() {
   const { setShowWalletModal } = useWalletStore();
 
-  const handleConnect = () => {
+  const openWalletModal = () => {
     hapticMedium();
     setShowWalletModal(true);
   };
 
   return (
-    <div className="flex flex-col min-h-screen w-full overflow-hidden">
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-[#060A14] px-6 overflow-hidden">
 
-      {/* ── Top zone — logo + headline ── */}
-      <div className="flex flex-col items-center pt-12 pb-4 z-10 relative">
-        <img src={logoMark} alt="QFPay" className="w-8 h-8 mb-6" style={{ opacity: 0.6 }} />
-        <h1
-          className="font-clash font-bold text-white text-center leading-tight"
-          style={{
-            fontSize: 'clamp(2rem, 4vw, 3.5rem)',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          Instant money.{' '}
-          <span style={{ color: '#0040FF' }}>Just a <span style={{ color: '#0040FF' }}>name</span>.</span>
+      {/* Headline block */}
+      <div className="text-center mb-8 md:mb-10">
+        <h1 className="font-clash font-semibold text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.1] tracking-tight text-[#F0F2F8]">
+          Pay anyone with just a{' '}
+          <span className="text-[#0040FF]">name</span>.
         </h1>
-      </div>
-
-      {/* ── Middle zone — owns the viewport, ThresholdScene fills it ──
-           position: relative is critical — pills are absolute children of this.
-           min-height: 60vh ensures pills have real height to position into. ── */}
-      <div
-        className="flex-1 z-10"
-        style={{ position: 'relative', minHeight: '60vh' }}
-      >
-        <ThresholdScene />
-      </div>
-
-      {/* ── Bottom zone — CTA button + trust line ── */}
-      <div className="flex flex-col items-center pb-10 gap-5 z-10 relative">
-        <ShimmerButton onClick={handleConnect}>
-          Connect Wallet
-        </ShimmerButton>
-        <p
-          className="font-satoshi text-center"
-          style={{
-            fontSize: '11px',
-            color: 'rgba(255,255,255,0.28)',
-            letterSpacing: '0.04em',
-          }}
-        >
-          Powered by QF Network · Sub-second finality · 0.1% deflationary burn
+        <p className="mt-4 font-satoshi text-base text-[rgba(122,139,171,0.7)] tracking-wide">
+          Sub-second finality · 0.1% deflationary burn · QF Network
         </p>
       </div>
+
+      {/* Preview Panel */}
+      <CeremonyPreview />
+
+      {/* CTA */}
+      <div className="mt-8 md:mt-10">
+        <ShimmerButton onClick={openWalletModal}>
+          Connect Wallet
+        </ShimmerButton>
+      </div>
+
     </div>
   );
 }
