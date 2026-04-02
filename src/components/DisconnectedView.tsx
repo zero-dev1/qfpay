@@ -12,7 +12,9 @@ export function DisconnectedView() {
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-screen bg-[#060A14] px-6 overflow-hidden">
+    <div className="relative flex flex-col items-center min-h-screen bg-[#060A14] px-6 overflow-hidden"
+      style={{ paddingTop: 'clamp(2.5rem, 8vh, 5rem)' }}
+    >
 
       {/* Headline block */}
       <div className="text-center mb-8 md:mb-10">
@@ -29,7 +31,7 @@ export function DisconnectedView() {
       <CeremonyPreview />
 
       {/* CTA */}
-      <div className="mt-8 md:mt-10">
+      <div className="mt-8 md:mt-10 pb-10">
         <ShimmerButton onClick={openWalletModal}>
           Connect Wallet
         </ShimmerButton>

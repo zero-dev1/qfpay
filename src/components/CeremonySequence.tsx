@@ -34,7 +34,7 @@ interface CeremonySequenceProps {
 const PHASE_ENTER = { opacity: 0, filter: 'blur(6px)', y: 10 };
 const PHASE_VISIBLE = { opacity: 1, filter: 'blur(0px)', y: 0 };
 const PHASE_EXIT = { opacity: 0, filter: 'blur(6px)', y: -10 };
-const PHASE_TRANSITION = { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const };
+const PHASE_TRANSITION = { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const };
 
 // ─── Phase components ────────────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ function NamePhase({ name }: { name: string }) {
       i++;
       setDisplayed(name.slice(0, i));
       if (i >= name.length) clearInterval(interval);
-    }, 110);
+    }, 130); // slowed from 110 → 130ms per character
     return () => clearInterval(interval);
   }, [name]);
 
@@ -310,56 +310,73 @@ export function CeremonySequence({
       const signal = controller.signal;
       const check = () => !signal.aborted && mountedRef.current;
 
-      // ── Beat 1 — Name types in (~2s) ──────────────────────────
+      // ── Beat 1 — Name types in ────────────────────────────────
+      // ~130ms × ~10 chars = ~1.3s typing + 1.2s settle = ~2.5s
       safeSetPhase('name');
-      await abortableDelay(2000);
+      await abortableDelay(2800);
       if (!check()) return;
-      if (shimmer) await shimmer.pulse(2);
+      if (shimmer) await shimmer.pulse(2);  // +600ms
       if (!check()) return;
 
-      // ── Beat 2 — Amount lands (~1.5s) ─────────────────────────
+      // ── Breath ────────────────────────────────────────────────
+      await abortableDelay(500);
+      if (!check()) return;
+
+      // ── Beat 2 — Amount lands ─────────────────────────────────
       safeSetPhase('amount');
-      await abortableDelay(1000);
+      await abortableDelay(1400);
       if (!check()) return;
-      if (shimmer) await shimmer.pulse(2);
+      if (shimmer) await shimmer.pulse(2);  // +600ms
       if (!check()) return;
 
-      // ── Beat 3 — Transaction preview (~2s) ────────────────────
+      // ── Breath ────────────────────────────────────────────────
+      await abortableDelay(500);
+      if (!check()) return;
+
+      // ── Beat 3 — Transaction preview ──────────────────────────
       safeSetPhase('preview');
-      await abortableDelay(1500);
+      await abortableDelay(2200);
       if (!check()) return;
-      if (shimmer) await shimmer.pulse(1);
+      if (shimmer) await shimmer.pulse(1);  // +300ms
       if (!check()) return;
 
-      // ── Beat 4 — Burn (~1.5s) ─────────────────────────────────
+      // ── Breath ────────────────────────────────────────────────
+      await abortableDelay(400);
+      if (!check()) return;
+
+      // ── Beat 4 — Burn ─────────────────────────────────────────
       shimmer?.setColor('crimson');
       safeSetPhase('burn');
-      await abortableDelay(200); // let crimson paint before pulse
+      await abortableDelay(400);           // let crimson paint
       if (!check()) return;
-      if (shimmer) await shimmer.pulse(2);
+      if (shimmer) await shimmer.pulse(2);  // +600ms
       if (!check()) return;
-      await abortableDelay(400);
+      await abortableDelay(600);
       if (!check()) return;
 
-      // ── Beat 5 — Sent (~1s) ───────────────────────────────────
+      // ── Beat 5 — Sent ─────────────────────────────────────────
       shimmer?.setColor('sapphire');
       safeSetPhase('sent');
-      await abortableDelay(1000);
+      await abortableDelay(1400);
       if (!check()) return;
 
-      // ── Beat 6 — Complete (~1.5s) ─────────────────────────────
-      safeSetPhase('complete');
-      await abortableDelay(200); // let checkmark start drawing
-      if (!check()) return;
-      if (shimmer) await shimmer.flood();
-      if (!check()) return;
-      await abortableDelay(1200);
-      if (!check()) return;
-
-      // ── Beat 7 — Reset (~0.5s) ────────────────────────────────
-      if (shimmer) await shimmer.dissipate();
-      if (!check()) return;
+      // ── Breath ────────────────────────────────────────────────
       await abortableDelay(400);
+      if (!check()) return;
+
+      // ── Beat 6 — Complete ─────────────────────────────────────
+      safeSetPhase('complete');
+      await abortableDelay(400);           // let checkmark draw
+      if (!check()) return;
+      if (shimmer) await shimmer.flood();   // +500ms
+      if (!check()) return;
+      await abortableDelay(1800);          // hold the blue
+      if (!check()) return;
+
+      // ── Beat 7 — Reset ────────────────────────────────────────
+      if (shimmer) await shimmer.dissipate(); // +500ms
+      if (!check()) return;
+      await abortableDelay(600);
       if (!check()) return;
 
       // ── Next loop ─────────────────────────────────────────────

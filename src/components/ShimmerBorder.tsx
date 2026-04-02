@@ -1,7 +1,6 @@
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -34,40 +33,21 @@ const COLOR_MAP: Record<ShimmerColor, string> = {
 
 const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
   ({ borderRadius = 24 }, ref) => {
-    // State-driven color so changes trigger re-render of the gradient
     const [color, setColorState] = useState<ShimmerColor>('sapphire');
-
-    // Shimmer speed: 'ambient' = slow 6s crawl, 'pulse' = fast 300ms loops
     const [speed, setSpeed] = useState<'ambient' | 'pulse'>('ambient');
-
-    // Flood state
     const [floodState, setFloodState] = useState<
       'idle' | 'flooding' | 'holding' | 'dissipating'
     >('idle');
 
-    // Refs for resolving imperative promises
-    const pulseResolveRef = useRef<(() => void) | null>(null);
     const floodResolveRef = useRef<(() => void) | null>(null);
     const dissipateResolveRef = useRef<(() => void) | null>(null);
-
-    // Shimmer ring element ref
-    const shimmerRef = useRef<HTMLDivElement>(null);
-
-    // ── Ambient rotation: CSS @property based ──────────────────────────
-    // The --ceremony-shimmer-angle custom property is animated via CSS
-    // keyframes defined in index.css. We toggle animation-duration to
-    // control speed. This is GPU-composited and doesn't touch JS per frame.
 
     // ── Imperative API ─────────────────────────────────────────────────
 
     const pulse = useCallback(
       (count = 2): Promise<void> =>
         new Promise((resolve) => {
-          // Each pulse = one full 360° rotation at 300ms
-          // Total pulse time = count * 300ms
-          // We switch to fast speed, wait for count rotations, then revert.
           setSpeed('pulse');
-
           const totalMs = count * 300;
           setTimeout(() => {
             setSpeed('ambient');
@@ -100,10 +80,7 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
     );
 
     useImperativeHandle(ref, () => ({ pulse, setColor, flood, dissipate }), [
-      pulse,
-      setColor,
-      flood,
-      dissipate,
+      pulse, setColor, flood, dissipate,
     ]);
 
     // ── Flood animation end handler ────────────────────────────────────
@@ -125,15 +102,12 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
     const hex = COLOR_MAP[color];
     const isAmbient = speed === 'ambient';
 
-    // Shimmer ring: conic-gradient with CSS custom property for angle
     const shimmerStyle: React.CSSProperties = {
       position: 'absolute',
       inset: 0,
       borderRadius,
       pointerEvents: 'none',
       zIndex: 1,
-
-      // Conic gradient using the CSS custom property
       background: `conic-gradient(
         from var(--ceremony-shimmer-angle),
         transparent 0%,
@@ -142,69 +116,56 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
         transparent 18%,
         transparent 100%
       )`,
-
-      // Mask to show only a thin border ring
       mask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
       WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
       maskComposite: 'exclude',
       WebkitMaskComposite: 'xor',
-      padding: '1.5px', // border width
-
-      // Animation — switch between slow ambient and fast pulse
-      animationName: isAmbient
-        ? 'ceremony-shimmer-crawl'
-        : 'ceremony-shimmer-pulse',
+      padding: '1.5px',
+      animationName: isAmbient ? 'ceremony-shimmer-crawl' : 'ceremony-shimmer-pulse',
       animationDuration: isAmbient ? '6s' : '0.3s',
       animationTimingFunction: 'linear',
       animationIterationCount: 'infinite',
       animationFillMode: 'forwards',
-
-      // Subtle glow on the shimmer
       filter: `drop-shadow(0 0 4px ${hex}40)`,
     };
 
-    // Flood overlay: circular div that scales from center
+    // ── Flood: wrapper centers, inner circle scales ────────────────────
+
     const showFlood =
       floodState === 'flooding' ||
       floodState === 'holding' ||
       floodState === 'dissipating';
 
-    const floodStyle: React.CSSProperties = {
-      position: 'absolute',
-      // Center a square that's large enough to cover the panel when scaled
-      top: '50%',
-      left: '50%',
-      width: '150%',
-      height: '150%',
-      transform: 'translate(-50%, -50%)',
-      borderRadius: '50%',
-      background: `radial-gradient(circle, ${COLOR_MAP.sapphire} 0%, ${COLOR_MAP.sapphire} 70%, ${COLOR_MAP.sapphire}00 100%)`,
-      pointerEvents: 'none',
-      zIndex: 2,
+    // The inner circle needs to be large enough to cover the panel
+    // at scale(1). We use a square whose side = 150% of the panel's
+    // larger dimension (height for a 3:4 panel). The wrapper centers
+    // it with flexbox so transform only does scale — no translate needed.
 
-      ...(floodState === 'flooding'
-        ? {
+    const getFloodAnimation = (): React.CSSProperties => {
+      switch (floodState) {
+        case 'flooding':
+          return {
             animation: 'ceremony-flood 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards',
-          }
-        : floodState === 'holding'
-        ? {
-            transform: 'translate(-50%, -50%) scale(1.5)',
+          };
+        case 'holding':
+          return {
+            transform: 'scale(1)',
             opacity: 1,
-          }
-        : floodState === 'dissipating'
-        ? {
-            animation:
-              'ceremony-dissipate 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards',
-          }
-        : {}),
+          };
+        case 'dissipating':
+          return {
+            animation: 'ceremony-dissipate 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+          };
+        default:
+          return {};
+      }
     };
-
     return (
       <>
         {/* Ambient shimmer ring */}
-        <div ref={shimmerRef} style={shimmerStyle} />
+        <div style={shimmerStyle} />
 
-        {/* Top rim highlight — subtle edge light from above */}
+        {/* Top rim highlight */}
         <div
           style={{
             position: 'absolute',
@@ -219,12 +180,34 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
           }}
         />
 
-        {/* Flood overlay */}
+        {/* Flood overlay — wrapper centers the circle, animation only scales */}
         {showFlood && (
           <div
-            style={floodStyle}
-            onAnimationEnd={handleFloodAnimationEnd}
-          />
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+              zIndex: 2,
+              overflow: 'hidden',
+              borderRadius,
+            }}
+          >
+            <div
+              style={{
+                // Circle large enough to cover the full panel at scale(1)
+                width: '160%',
+                height: '160%',
+                borderRadius: '50%',
+                background: COLOR_MAP.sapphire,
+                flexShrink: 0,
+                ...getFloodAnimation(),
+              }}
+              onAnimationEnd={handleFloodAnimationEnd}
+            />
+          </div>
         )}
       </>
     );

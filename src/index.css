@@ -148,21 +148,23 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Flood ripple — scale from center */
+/* Flood ripple — scale from center.
+   Centering is handled by the wrapper div (inset:0 + flex center),
+   so the keyframes only control scale + opacity. */
 @keyframes ceremony-flood {
   from {
     transform: scale(0);
     opacity: 1;
   }
   to {
-    transform: scale(1.5);
+    transform: scale(1);
     opacity: 1;
   }
 }
 
 @keyframes ceremony-dissipate {
   from {
-    transform: scale(1.5);
+    transform: scale(1);
     opacity: 1;
   }
   to {
