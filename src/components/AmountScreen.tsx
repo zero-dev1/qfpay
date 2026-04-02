@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Flame, Delete } from 'lucide-react';
 import { usePaymentStore } from '../stores/paymentStore';
 import { useWalletStore } from '../stores/walletStore';
@@ -11,14 +11,15 @@ import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
 
 // ─── Keyboard height — used for container bottom padding on mobile ────────────
-const KEYBOARD_HEIGHT = 280;
+const KEYBOARD_HEIGHT = 272;
 
-// ─── Custom keyboard layout ───────────────────────────────────────────────────
+// ─── Custom keyboard layout — pure 3×4 grid ──────────────────────────────────
 const DIGIT_ROWS = [
   ['1', '2', '3'],
   ['4', '5', '6'],
   ['7', '8', '9'],
 ];
+const BOTTOM_ROW = ['.', '0', 'backspace'];
 
 export const AmountScreen = () => {
   const {
@@ -48,7 +49,7 @@ export const AmountScreen = () => {
     if (addr) getQFBalance(addr).then(setBalance);
   }, [ss58Address, address]);
 
-  // ─── Calculation logic — copied verbatim ────────────────────────────────────
+  // ─── Calculation logic ──────────────────────────────────────────────────────
   const amountWei = amountInput ? parseQFAmount(amountInput) : 0n;
   const { burnAmount, recipientAmount, totalRequired } = calculateBurn(amountWei);
   const insufficientBalance = amountWei > 0n && totalRequired + GAS_BUFFER > balance;
@@ -56,6 +57,9 @@ export const AmountScreen = () => {
   const maxSendableWei = balance > GAS_BUFFER
     ? ((balance - GAS_BUFFER) * 10000n) / 10010n
     : 0n;
+
+  // ── Shortfall for "X QF short" ──
+  const shortfallWei = insufficientBalance ? (totalRequired + GAS_BUFFER) - balance : 0n;
 
   // ── Fire sapphire wave on underline when canContinue first becomes true ──
   useEffect(() => {
@@ -65,18 +69,17 @@ export const AmountScreen = () => {
     prevCanContinueRef.current = canContinue;
   }, [canContinue]);
 
-  // ─── Keyboard handlers ────────────────────────────────────────────────────
+  // ─── Key handler ────────────────────────────────────────────────────────────
 
-  const handleKey = (key: string) => {
+  const handleKey = useCallback((key: string) => {
     hapticLight();
     if (key === 'MAX') {
       if (maxSendableWei <= 0n) return;
-      // Convert wei to plain decimal string, strip trailing zeros
       const raw = (Number(maxSendableWei) / 1e18).toFixed(6).replace(/\.?0+$/, '');
       setAmountInput(raw);
       return;
     }
-    if (key === '⌫') {
+    if (key === '⌫' || key === 'backspace') {
       setAmountInput(prev => prev.slice(0, -1));
       return;
     }
@@ -85,10 +88,9 @@ export const AmountScreen = () => {
       setAmountInput(prev => (prev === '' ? '0.' : prev + '.'));
       return;
     }
-    // Digit
     const next = amountInput === '0' ? key : amountInput + key;
     if (isValidAmountInput(next)) setAmountInput(next);
-  };
+  }, [amountInput, maxSendableWei]);
 
   const startLongPress = () => {
     longPressRef.current = setTimeout(() => {
@@ -104,10 +106,32 @@ export const AmountScreen = () => {
     }
   };
 
+  // ─── Continue action (shared between chevron click and Enter key) ───────────
+
+  const handleContinue = useCallback(() => {
+    if (!canContinue) return;
+    hapticMedium();
+    setAmount(amountInput, amountWei, burnAmount, recipientAmount, totalRequired);
+    goToPreview();
+  }, [canContinue, amountInput, amountWei, burnAmount, recipientAmount, totalRequired, setAmount, goToPreview]);
+
+  // ── Desktop: Enter key to continue ──
+  useEffect(() => {
+    if (!isDesktop) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleContinue();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isDesktop, handleContinue]);
+
   // ─── Derived display values ──────────────────────────────────────────────
 
   const displayRecipientLabel = recipientName
-    ? `${recipientName}.qf`
+    ? `${recipientName}.qf` 
     : recipientAddress
       ? truncateAddress(recipientAddress)
       : '';
@@ -118,13 +142,27 @@ export const AmountScreen = () => {
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center min-h-[100svh] px-6 relative"
+      className="flex flex-col items-center min-h-[100svh] px-6 relative"
       style={{ paddingBottom: isDesktop ? 0 : KEYBOARD_HEIGHT + 24 }}
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
     >
+      {/*
+        ── ANCHOR GROUP ──
+        This is the positionally-stable cluster. It uses a top spacer to push
+        itself to ~40% from the top of the available viewport, which keeps
+        the visual center of gravity slightly above true-center (more natural).
+        The spacer flexes but has a max so it doesn't over-push on tall screens.
+        Critically: nothing below the underline is inside this group, so
+        adding burn lines / chevron / short message below does NOT shift
+        the anchor upward.
+      */}
+      <div
+        className="flex-1"
+        style={{ maxHeight: isDesktop ? '30vh' : '22vh' }}
+      />
       {/* ── Back chevron ‹ ── */}
       <motion.button
         className="fixed top-5 left-5 z-50 transition-opacity hover:opacity-60"
@@ -139,7 +177,7 @@ export const AmountScreen = () => {
         ‹
       </motion.button>
 
-      {/* ── Recipient presence — top-center, avatar travels via layoutId ── */}
+      {/* ── Recipient presence — avatar + name ── */}
       <motion.div
         className="flex flex-col items-center mb-8"
         initial={{ opacity: 0, y: -8 }}
@@ -169,7 +207,6 @@ export const AmountScreen = () => {
           )}
         </motion.div>
 
-        {/* Name.qf below avatar */}
         <span className="font-satoshi font-medium text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
           {recipientName && (
             <>
@@ -181,7 +218,7 @@ export const AmountScreen = () => {
         </span>
       </motion.div>
 
-      {/* ── Amount display — tight inline pair ── */}
+      {/* ── Amount display — tight inline pair + MAX micro-pill ── */}
       <div className="flex items-baseline justify-center mb-4">
         <div className="inline-flex items-baseline gap-2">
           {isDesktop ? (
@@ -230,10 +267,36 @@ export const AmountScreen = () => {
           >
             QF
           </span>
+
+          {/* MAX micro-pill — only visible when there's a sendable balance */}
+          {maxSendableWei > 0n && (
+            <motion.button
+              className="font-satoshi font-semibold select-none"
+              style={{
+                fontSize: '0.6rem',
+                letterSpacing: '0.08em',
+                color: BRAND_BLUE,
+                background: 'rgba(0,64,255,0.08)',
+                border: '1px solid rgba(0,64,255,0.18)',
+                borderRadius: 6,
+                padding: '2px 7px',
+                marginLeft: 2,
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                opacity: amountInput ? 0.55 : 0.85,
+                transition: 'opacity 0.3s ease',
+              }}
+              onClick={() => handleKey('MAX')}
+              whileTap={{ scale: 0.92 }}
+              aria-label="Set maximum amount"
+            >
+              MAX
+            </motion.button>
+          )}
         </div>
       </div>
 
-      {/* ── Underline — sapphire when valid, amber when insufficient ── */}
+      {/* ── Underline — four states: dim → typing → valid → amber ── */}
       <motion.div
         key={waveKey}
         style={{
@@ -254,7 +317,12 @@ export const AmountScreen = () => {
         transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
       />
 
-      {/* ── Burn line — two lines, Lucide Flame icon ── */}
+      {/* ────────────────────────────────────────────────────────────────────────
+          RESULTS AREA — everything below the underline.
+          This area grows downward. It does NOT affect the anchor group above.
+          ──────────────────────────────────────────────────────────────────────── */}
+
+      {/* ── Burn lines ── */}
       <AnimatePresence>
         {amountWei > 0n && (
           <motion.div
@@ -281,18 +349,18 @@ export const AmountScreen = () => {
         )}
       </AnimatePresence>
 
-      {/* ── Insufficient balance — amber inline, no card ── */}
+      {/* ── Shortfall — "{X} QF short" in amber ── */}
       <AnimatePresence>
         {insufficientBalance && (
           <motion.p
             className="font-satoshi mt-2 text-center"
             style={{ fontSize: 13, color: 'rgba(245,158,11,0.85)' }}
             initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1,  y:  0 }}
-            exit={{    opacity: 0,  y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
           >
-            Insufficient balance
+            {formatQF(shortfallWei)} QF short
           </motion.p>
         )}
       </AnimatePresence>
@@ -302,15 +370,15 @@ export const AmountScreen = () => {
         {canContinue && (
           <motion.button
             className="mt-6 focus-ring"
-            style={{ fontSize: '1.75rem', lineHeight: 1, color: 'rgba(255,255,255,0.50)' }}
-            onClick={() => {
-              hapticMedium();
-              setAmount(amountInput, amountWei, burnAmount, recipientAmount, totalRequired);
-              goToPreview();
+            style={{
+              fontSize: isDesktop ? '2.25rem' : '1.75rem',
+              lineHeight: 1,
+              color: 'rgba(255,255,255,0.50)',
             }}
+            onClick={handleContinue}
             initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1,  y:  0 }}
-            exit={{    opacity: 0,  y:  6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
             transition={{ ...EASE_SPRING }}
             whileHover={{ color: 'rgba(255,255,255,0.90)' }}
             whileTap={{ scale: 0.92 }}
@@ -321,7 +389,10 @@ export const AmountScreen = () => {
         )}
       </AnimatePresence>
 
-      {/* ── Custom keyboard — mobile only, borderless keys, seamless with void ── */}
+      {/* ── Bottom spacer — absorbs remaining space so anchor doesn't shift ── */}
+      <div className="flex-1" />
+
+      {/* ── Custom keyboard — mobile only, 3×4 grid, borderless ── */}
       {!isDesktop && (
         <div
           className="fixed bottom-0 left-0 right-0 z-40 px-4 pt-4"
@@ -338,16 +409,10 @@ export const AmountScreen = () => {
             </div>
           ))}
 
-          {/* Bottom row: . 0 MAX ⌫ */}
+          {/* Bottom row: .  0  ⌫  — clean 3-column grid */}
           <div className="flex mb-1">
             <KeyButton label="." onTap={() => handleKey('.')} />
             <KeyButton label="0" onTap={() => handleKey('0')} />
-            <KeyButton
-              label="MAX"
-              onTap={() => handleKey('MAX')}
-              variant="sapphire"
-              disabled={maxSendableWei <= 0n}
-            />
             <KeyButton
               label="backspace"
               onTap={() => handleKey('⌫')}
@@ -368,34 +433,30 @@ interface KeyButtonProps {
   onTap: () => void;
   onLongPressStart?: () => void;
   onLongPressEnd?: () => void;
-  variant?: 'default' | 'sapphire';
   disabled?: boolean;
 }
 
 function KeyButton({
   label, onTap, onLongPressStart, onLongPressEnd,
-  variant = 'default', disabled = false,
+  disabled = false,
 }: KeyButtonProps) {
-  const isSapphire = variant === 'sapphire';
   const isBackspace = label === 'backspace';
 
   return (
     <motion.button
       className="flex-1 flex items-center justify-center select-none"
       style={{
-        height: 58,
-        borderRadius: isSapphire ? 14 : 0,
-        fontSize: label === 'MAX' ? '0.75rem' : '1.4rem',
-        letterSpacing: label === 'MAX' ? '0.05em' : '-0.01em',
-        fontFamily: label === 'MAX' || isBackspace ? undefined : "'Clash Display', sans-serif",
+        height: 56,
+        borderRadius: 0,
+        fontSize: '1.4rem',
+        letterSpacing: '-0.01em',
+        fontFamily: isBackspace ? undefined : "'Clash Display', sans-serif",
         fontWeight: 600,
-        background: isSapphire ? 'rgba(0,64,255,0.10)' : 'transparent',
-        border: isSapphire ? '1px solid rgba(0,64,255,0.15)' : 'none',
-        color: isSapphire
-          ? BRAND_BLUE
-          : isBackspace
-            ? 'rgba(255,255,255,0.50)'
-            : 'rgba(255,255,255,0.75)',
+        background: 'transparent',
+        border: 'none',
+        color: isBackspace
+          ? 'rgba(255,255,255,0.50)'
+          : 'rgba(255,255,255,0.75)',
         opacity: disabled ? 0.25 : 1,
         cursor: disabled ? 'not-allowed' : 'default',
         WebkitTapHighlightColor: 'transparent',
