@@ -7,6 +7,7 @@ import { useWalletStore } from '../stores/walletStore';
 import { hapticLight, hapticDouble } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { BRAND_BLUE } from '../lib/colors';
+import { CornerDownLeft } from 'lucide-react';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import {
   EXAMPLE_NAMES,
@@ -234,6 +235,18 @@ export const RecipientScreen = () => {
     goToAmount();
   };
 
+  // ── Desktop: Enter key to advance when resolved ──
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && canContinue) {
+        e.preventDefault();
+        handleAdvance();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canContinue]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Tap anywhere to focus input (if not already focused) ──
   const handleScreenTap = () => {
     inputRef.current?.focus();
@@ -322,6 +335,36 @@ export const RecipientScreen = () => {
                 {recipientName}
                 <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
               </motion.p>
+
+              {/* Return key hint — desktop only, appears after resolution */}
+              {window.innerWidth >= 1024 && (
+                <motion.button
+                  className="inline-flex items-center gap-2 font-satoshi select-none mt-4"
+                  style={{
+                    fontSize: 13,
+                    color: 'rgba(255,255,255,0.40)',
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    borderRadius: 10,
+                    padding: '6px 14px',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s ease, color 0.2s ease',
+                  }}
+                  onClick={(e) => { e.stopPropagation(); handleAdvance(); }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25, duration: 0.3, ease: EASE_OUT_EXPO }}
+                  whileHover={{
+                    borderColor: 'rgba(255,255,255,0.25)',
+                    color: 'rgba(255,255,255,0.70)',
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label="Continue"
+                >
+                  <CornerDownLeft className="w-3.5 h-3.5" />
+                  <span>Return</span>
+                </motion.button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
