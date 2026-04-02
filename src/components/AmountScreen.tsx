@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
+import { Flame, Delete } from 'lucide-react';
 import { usePaymentStore } from '../stores/paymentStore';
 import { useWalletStore } from '../stores/walletStore';
 import { getQFBalance, formatQF, calculateBurn, truncateAddress } from '../utils/qfpay';
@@ -7,10 +8,10 @@ import { parseQFAmount, isValidAmountInput } from '../utils/parseAmount';
 import { GAS_BUFFER } from '../config/contracts';
 import { hapticLight, hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
-import { BRAND_BLUE, BG_SURFACE, BURN_CRIMSON } from '../lib/colors';
+import { BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
 
 // ─── Keyboard height — used for container bottom padding on mobile ────────────
-const KEYBOARD_HEIGHT = 268;
+const KEYBOARD_HEIGHT = 280;
 
 // ─── Custom keyboard layout ───────────────────────────────────────────────────
 const DIGIT_ROWS = [
@@ -63,15 +64,6 @@ export const AmountScreen = () => {
     }
     prevCanContinueRef.current = canContinue;
   }, [canContinue]);
-
-  // ─── Balance display — brightens as amount approaches limit ─────────────────
-  const balanceRatio  = balance > 0n ? Number(totalRequired) / Number(balance) : 0;
-  const balanceOpacity = insufficientBalance
-    ? 1
-    : Math.min(0.30 + balanceRatio * 0.70, 1);
-  const balanceColor = insufficientBalance
-    ? 'rgba(245,158,11,0.90)'
-    : `rgba(255,255,255,${balanceOpacity.toFixed(2)})`;
 
   // ─── Keyboard handlers ────────────────────────────────────────────────────
 
@@ -126,8 +118,8 @@ export const AmountScreen = () => {
 
   return (
     <motion.div
-      className="flex flex-col items-center min-h-screen px-6 pt-12 relative"
-      style={{ paddingBottom: isDesktop ? 40 : KEYBOARD_HEIGHT }}
+      className="flex flex-col items-center justify-center min-h-[100svh] px-6 relative"
+      style={{ paddingBottom: isDesktop ? 0 : KEYBOARD_HEIGHT + 24 }}
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -189,93 +181,103 @@ export const AmountScreen = () => {
         </span>
       </motion.div>
 
-      {/* ── Balance line — JetBrains Mono 11px, brightens as limit approaches ── */}
-      <motion.p
-        className="font-mono mb-6 text-center"
-        style={{ fontSize: 11, color: balanceColor, transition: 'color 0.3s ease' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.15 }}
-      >
-        {formatQF(balance)} QF
-      </motion.p>
-
-      {/* ── Amount display ── */}
-      <div className="flex items-baseline justify-center gap-3 mb-4 w-full">
-        {isDesktop ? (
-          <input
-            autoFocus
-            type="text"
-            inputMode="decimal"
-            value={amountInput}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === '' || isValidAmountInput(val)) setAmountInput(val);
-            }}
-            placeholder="0"
-            className="font-clash font-bold text-center bg-transparent outline-none border-none"
-            style={{
-              fontSize: 'clamp(3rem, 10vw, 6rem)',
-              letterSpacing: '-0.02em',
-              color: amountInput ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.20)',
-              width: '100%',
-              maxWidth: 400,
-              caretColor: BRAND_BLUE,
-            }}
-          />
-        ) : (
+      {/* ── Amount display — tight inline pair ── */}
+      <div className="flex items-baseline justify-center mb-4">
+        <div className="inline-flex items-baseline gap-2">
+          {isDesktop ? (
+            <input
+              autoFocus
+              type="text"
+              inputMode="decimal"
+              value={amountInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || isValidAmountInput(val)) setAmountInput(val);
+              }}
+              placeholder="0"
+              className="font-clash font-bold text-right bg-transparent outline-none border-none"
+              style={{
+                fontSize: 'clamp(2.5rem, 8vw, 6rem)',
+                letterSpacing: '-0.02em',
+                color: amountInput ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.20)',
+                width: `${Math.max(1, amountInput.length) * 0.65 + 0.5}em`,
+                minWidth: '1.2em',
+                maxWidth: '80vw',
+                caretColor: BRAND_BLUE,
+              }}
+            />
+          ) : (
+            <span
+              className="font-clash font-bold"
+              style={{
+                fontSize: 'clamp(2.5rem, 8vw, 6rem)',
+                letterSpacing: '-0.02em',
+                color: amountInput ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.20)',
+              }}
+            >
+              {amountInput || '0'}
+            </span>
+          )}
           <span
-            className="font-clash font-bold text-center"
+            className="font-clash font-bold"
             style={{
-              fontSize: 'clamp(3rem, 10vw, 6rem)',
-              letterSpacing: '-0.02em',
-              color: amountInput ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.20)',
-              minWidth: 40,
+              fontSize: 'clamp(1.25rem, 3vw, 2rem)',
+              color: amountInput
+                ? `${BRAND_BLUE}cc` 
+                : `${BRAND_BLUE}66`,
+              transition: 'color 0.3s ease',
             }}
           >
-            {amountInput || '0'}
+            QF
           </span>
-        )}
-        <span
-          className="font-clash font-bold"
-          style={{ fontSize: 'clamp(1.25rem, 3vw, 2rem)', color: `${BRAND_BLUE}cc` }}
-        >
-          QF
-        </span>
+        </div>
       </div>
 
-      {/* ── Sapphire underline — wave animates when canContinue becomes true ── */}
+      {/* ── Underline — sapphire when valid, amber when insufficient ── */}
       <motion.div
         key={waveKey}
         style={{
           width: 'clamp(160px, 50%, 320px)',
           height: 2,
           borderRadius: 1,
-          background: canContinue ? BRAND_BLUE : 'rgba(0,64,255,0.30)',
+          background: insufficientBalance
+            ? 'rgba(245,158,11,0.70)'
+            : canContinue
+              ? BRAND_BLUE
+              : amountInput
+                ? 'rgba(0,64,255,0.45)'
+                : 'rgba(0,64,255,0.25)',
+          transition: 'background 0.3s ease',
         }}
         initial={{ scaleX: waveKey > 0 ? 0.4 : 1, originX: 0 }}
         animate={{ scaleX: 1 }}
         transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
       />
 
-      {/* ── Burn line — appears when any amount is typed ── */}
+      {/* ── Burn line — two lines, Lucide Flame icon ── */}
       <AnimatePresence>
         {amountWei > 0n && (
-          <motion.p
-            className="font-satoshi mt-4 text-center"
-            style={{ fontSize: 12 }}
+          <motion.div
+            className="flex flex-col items-center gap-1 mt-4"
             initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1,  y:  0 }}
-            exit={{    opacity: 0,  y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
           >
-            <span style={{ color: 'rgba(255,255,255,0.45)' }}>
-              {formatQF(totalRequired)} QF leaves your wallet ·{' '}
-            </span>
-            <span style={{ color: `${BURN_CRIMSON}99` }}>
-              🔥 {formatQF(burnAmount)} burns
-            </span>
-          </motion.p>
+            <p
+              className="font-satoshi text-center"
+              style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}
+            >
+              {formatQF(totalRequired)} QF leaves your wallet
+            </p>
+            <p
+              className="font-satoshi text-center inline-flex items-center gap-1"
+              style={{ fontSize: 12, color: `${BURN_CRIMSON}99` }}
+            >
+              <Flame className="w-3 h-3" style={{ color: `${BURN_CRIMSON}99` }} />
+              {formatQF(burnAmount)} QF burns
+            </p>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -319,21 +321,17 @@ export const AmountScreen = () => {
         )}
       </AnimatePresence>
 
-      {/* ── Custom keyboard — mobile only, fixed bottom, full width ── */}
+      {/* ── Custom keyboard — mobile only, borderless keys, seamless with void ── */}
       {!isDesktop && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-40 px-3 pt-3 pb-safe-bottom"
+          className="fixed bottom-0 left-0 right-0 z-40 px-4 pt-4"
           style={{
-            background: 'rgba(6,10,20,0.92)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
           }}
         >
           {/* Digit rows 1–9 */}
           {DIGIT_ROWS.map((row) => (
-            <div key={row.join('')} className="flex gap-2 mb-2">
+            <div key={row.join('')} className="flex mb-1">
               {row.map((key) => (
                 <KeyButton key={key} label={key} onTap={() => handleKey(key)} />
               ))}
@@ -341,7 +339,7 @@ export const AmountScreen = () => {
           ))}
 
           {/* Bottom row: . 0 MAX ⌫ */}
-          <div className="flex gap-2">
+          <div className="flex mb-1">
             <KeyButton label="." onTap={() => handleKey('.')} />
             <KeyButton label="0" onTap={() => handleKey('0')} />
             <KeyButton
@@ -351,8 +349,8 @@ export const AmountScreen = () => {
               disabled={maxSendableWei <= 0n}
             />
             <KeyButton
-              label="⌫"
-              onTap={() => { handleKey('⌫'); }}
+              label="backspace"
+              onTap={() => handleKey('⌫')}
               onLongPressStart={startLongPress}
               onLongPressEnd={cancelLongPress}
             />
@@ -366,12 +364,12 @@ export const AmountScreen = () => {
 // ─── KeyButton — individual keyboard key ─────────────────────────────────────
 
 interface KeyButtonProps {
-  label:             string;
-  onTap:             () => void;
+  label: string;
+  onTap: () => void;
   onLongPressStart?: () => void;
-  onLongPressEnd?:   () => void;
-  variant?:          'default' | 'sapphire';
-  disabled?:         boolean;
+  onLongPressEnd?: () => void;
+  variant?: 'default' | 'sapphire';
+  disabled?: boolean;
 }
 
 function KeyButton({
@@ -379,23 +377,28 @@ function KeyButton({
   variant = 'default', disabled = false,
 }: KeyButtonProps) {
   const isSapphire = variant === 'sapphire';
+  const isBackspace = label === 'backspace';
 
   return (
     <motion.button
-      className="flex-1 flex items-center justify-center font-clash font-bold select-none focus-ring"
+      className="flex-1 flex items-center justify-center select-none"
       style={{
-        height: 54,
-        borderRadius: 12,
-        fontSize: label === 'MAX' ? '0.8rem' : '1.25rem',
-        background: isSapphire
-          ? `rgba(0,64,255,0.12)`
-          : 'rgba(255,255,255,0.06)',
-        border: `1px solid ${isSapphire ? 'rgba(0,64,255,0.20)' : 'rgba(255,255,255,0.08)'}`,
+        height: 58,
+        borderRadius: isSapphire ? 14 : 0,
+        fontSize: label === 'MAX' ? '0.75rem' : '1.4rem',
+        letterSpacing: label === 'MAX' ? '0.05em' : '-0.01em',
+        fontFamily: label === 'MAX' || isBackspace ? undefined : "'Clash Display', sans-serif",
+        fontWeight: 600,
+        background: isSapphire ? 'rgba(0,64,255,0.10)' : 'transparent',
+        border: isSapphire ? '1px solid rgba(0,64,255,0.15)' : 'none',
         color: isSapphire
           ? BRAND_BLUE
-          : 'rgba(255,255,255,0.85)',
-        opacity: disabled ? 0.30 : 1,
+          : isBackspace
+            ? 'rgba(255,255,255,0.50)'
+            : 'rgba(255,255,255,0.75)',
+        opacity: disabled ? 0.25 : 1,
         cursor: disabled ? 'not-allowed' : 'default',
+        WebkitTapHighlightColor: 'transparent',
       }}
       disabled={disabled}
       onPointerDown={() => {
@@ -410,9 +413,14 @@ function KeyButton({
       onPointerLeave={() => {
         if (onLongPressEnd) onLongPressEnd();
       }}
-      whileTap={disabled ? undefined : { scale: 0.96 }}
+      whileTap={disabled ? undefined : { scale: 0.88, opacity: 0.4 }}
+      transition={{ duration: 0.08 }}
     >
-      {label}
+      {isBackspace ? (
+        <Delete className="w-5 h-5" />
+      ) : (
+        label
+      )}
     </motion.button>
   );
 }

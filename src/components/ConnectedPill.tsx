@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { useWalletStore } from '../stores/walletStore';
 import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
@@ -11,7 +12,7 @@ export function ConnectedPill() {
   const { qnsName, address, ss58Address, avatarUrl, disconnect } = useWalletStore();
 
   const [balance, setBalance]           = useState<bigint | null>(null);
-  const [balanceVisible, setBalanceVisible] = useState(false);
+  const [balanceVisible, setBalanceVisible] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [copied, setCopied]             = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(
@@ -126,6 +127,23 @@ export function ConnectedPill() {
           )}
         </motion.span>
 
+        {/* Square separator dot */}
+        <div
+          style={{
+            width: 4, height: 4, borderRadius: 1,
+            background: 'rgba(255,255,255,0.25)',
+            flexShrink: 0,
+          }}
+        />
+
+        {/* Balance — inline in pill */}
+        <span
+          className="font-mono text-xs whitespace-nowrap"
+          style={{ color: `${BRAND_BLUE}cc` }}
+        >
+          {displayBalance}
+        </span>
+
         {/* Chevron — decorative, dropdown opened by pill onClick */}
         <span
           className="text-xs ml-0.5 select-none"
@@ -154,19 +172,20 @@ export function ConnectedPill() {
             exit={   { opacity: 0, scale: 0.95, y: -6 }}
             transition={{ type: 'spring', damping: 24, stiffness: 320, duration: 0.15 }}
           >
-            {/* Balance — tap to reveal / mask */}
-            <div
-              className="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer select-none"
+            {/* Balance visibility toggle */}
+            <button
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-satoshi text-sm transition-colors"
               style={{ color: 'rgba(255,255,255,0.60)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               onClick={() => { hapticLight(); setBalanceVisible(v => !v); }}
             >
-              <span className="font-satoshi text-sm">Balance</span>
-              <span className="font-mono text-xs" style={{ color: `${BRAND_BLUE}cc` }}>
-                {displayBalance}
-              </span>
-            </div>
+              <span>{balanceVisible ? 'Hide balance' : 'Show balance'}</span>
+              {balanceVisible
+                ? <EyeOff className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.35)' }} />
+                : <Eye className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.35)' }} />
+              }
+            </button>
 
             {/* Divider */}
             <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 8px' }} />
