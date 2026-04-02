@@ -12,10 +12,10 @@ export default function CeremonyPreview() {
     <div
       className="relative w-full h-full overflow-hidden rounded-2xl"
       style={{
-        background: 'rgba(255, 255, 255, 0.015)',
-        // Subtle rim light — whisper of a top edge, like a physical object
-        // catching light from above. Nothing else.
-        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+        // Near-invisible against #060A14. Panel exists because the beam tells you it does.
+        background: 'rgba(255, 255, 255, 0.008)',
+        // Whisper of rim light — physical object catching light from above
+        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.025)',
       }}
     >
       {!reducedMotion && <ShimmerBorder ref={shimmerRef} borderRadius={16} />}

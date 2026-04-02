@@ -16,7 +16,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Prevent overscroll bounce on mobile */
 html {
   overscroll-behavior: none;
 }
@@ -78,18 +77,26 @@ input:-webkit-autofill:focus {
   50% { opacity: 1; }
 }
 
-/* ─── Shimmer border rotation ─── */
-@property --shimmer-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
+/* ═══════════════════════════════════════════════════════════════════
+   BEAM DOT — offset-path border beam system
+   A glowing dot traces the panel edge using CSS offset-path.
+   No @property, no conic-gradient, no mask-composite.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes beam-orbit {
+  from { offset-distance: 0%; }
+  to   { offset-distance: 100%; }
 }
 
-@keyframes shimmer-rotate {
-  to {
-    --shimmer-angle: 360deg;
-  }
+.beam-dot {
+  animation: beam-orbit var(--beam-duration, 6s) linear infinite;
 }
+
+.beam-speed-ambient  { --beam-duration: 6s; }
+.beam-speed-confirm  { --beam-duration: 1.2s; }
+.beam-speed-fast     { --beam-duration: 0.8s; }
+
+/* ═══════════════════════════════════════════════════════════════════ */
 
 /* Threshold scene — burn particle drift */
 @keyframes burn-drift {
@@ -124,23 +131,6 @@ input:-webkit-autofill:focus {
     filter: blur(0px);
   }
 }
-
-.animate-shimmer-rotate {
-  animation: shimmer-rotate 4s linear infinite;
-}
-
-.animate-shimmer-rotate-fast {
-  animation: shimmer-rotate 1.5s linear infinite;
-}
-
-/* Shimmer beam animation classes */
-.shimmer-beam {
-  animation: shimmer-rotate var(--shimmer-duration, 6s) linear infinite;
-}
-
-.shimmer-speed-ambient { --shimmer-duration: 6s; }
-.shimmer-speed-confirm { --shimmer-duration: 1.2s; }
-.shimmer-speed-fast { --shimmer-duration: 0.8s; }
 
 /* Cursor blink */
 @keyframes cursor-blink {
@@ -182,20 +172,14 @@ input:-webkit-autofill:focus {
   animation: ceremony-drain 600ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
 
-/* Shimmer button always-on sweep */
-@keyframes shimmer-sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
 /* ─── Panel aspect ratio variables ─── */
 :root {
-  --panel-ratio: 3 / 2;  /* landscape on desktop */
+  --panel-ratio: 3 / 2;
 }
 
 @media (max-width: 640px) {
   :root {
-    --panel-ratio: 4 / 5;  /* taller on mobile, but not 3:4 */
+    --panel-ratio: 4 / 5;
   }
 }
 

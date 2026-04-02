@@ -5,8 +5,13 @@ type ShimmerColor = 'sapphire' | 'crimson';
 type ShimmerSpeed = 'ambient' | 'confirm' | 'fast';
 type ShimmerMode = 'trace' | 'bloom' | 'hold' | 'flood' | 'drain';
 
+const COLOR_MAP = {
+  sapphire: '#0040FF',
+  crimson: '#DC2626',
+} as const;
+
 const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
-  ({ borderRadius = 24 }, ref) => {
+  ({ borderRadius = 16 }, ref) => {
     const [color, setColorState] = useState<ShimmerColor>('sapphire');
     const [speed, setSpeedState] = useState<ShimmerSpeed>('ambient');
     const [mode, setModeState] = useState<ShimmerMode>('trace');
@@ -27,9 +32,7 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
       (): Promise<void> =>
         new Promise((resolve) => {
           setModeState('flood');
-          setTimeout(() => {
-            resolve();
-          }, 500);
+          setTimeout(resolve, 500);
         }),
       []
     );
@@ -50,140 +53,104 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
       setMode, setColor, setSpeed, flood, drain,
     ]);
 
-    // ── Derived values ───────────────────────────────────────────────
+    const hex = COLOR_MAP[color];
 
-    const shimmerColor =
-      color === 'crimson'
-        ? 'rgba(220, 38, 38, 0.8)'
-        : 'rgba(0, 64, 255, 0.7)';
+    // Speed → CSS class for the beam orbit duration
+    const speedClass =
+      speed === 'ambient'
+        ? 'beam-speed-ambient'
+        : speed === 'confirm'
+          ? 'beam-speed-confirm'
+          : 'beam-speed-fast';
 
-    // The faint trail is almost invisible — just a whisper so the border
-    // doesn't pop in/out harshly, but NOT enough to outline the whole panel
-    const faintColor =
-      color === 'crimson'
-        ? 'rgba(220, 38, 38, 0.02)'
-        : 'rgba(0, 64, 255, 0.02)';
-
-    // Beam: bright ~30deg arc, rest is TRANSPARENT (not faintColor)
-    const beamGradient = `conic-gradient(
-      from var(--shimmer-angle),
-      transparent 0deg,
-      transparent 325deg,
-      ${shimmerColor} 345deg,
-      ${shimmerColor} 350deg,
-      transparent 360deg
-    )`;
-
-    // Trail: very faint full ring so edges don't vanish completely
-    // but nowhere near visible enough to read as an outlined border
-    const trailGradient = `conic-gradient(
-      from var(--shimmer-angle),
-      ${faintColor} 0deg,
-      ${faintColor} 320deg,
-      transparent 340deg,
-      transparent 360deg
-    )`;
-
-    // ── Renderers ────────────────────────────────────────────────────
+    // ── TRACE: glowing dot orbiting via offset-path ──────────────────
 
     const renderTraceMode = () => (
       <>
-        {/* Faint trail — near-invisible persistence behind the beam */}
+        {/* The beam dot — a small glowing orb that follows the border path */}
         <div
-          className={`shimmer-beam shimmer-speed-${speed}`}
+          className={`beam-dot ${speedClass}`}
           style={{
             position: 'absolute',
-            inset: 0,
-            borderRadius,
+            // The dot itself: small, colored, heavily blurred for glow
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, ${hex}90 0%, ${hex}40 30%, transparent 70%)`,
+            // offset-path traces the panel's rounded rect border
+            offsetPath: `inset(0 round ${borderRadius}px)`,
+            offsetRotate: '0deg',
+            // Position the center of the dot ON the path
+            transform: 'translate(-50%, -50%)',
             pointerEvents: 'none',
             zIndex: 1,
-            background: trailGradient,
-            mask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
-            WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
-            maskComposite: 'exclude',
-            WebkitMaskComposite: 'xor',
-            padding: '1px',
-            transition: 'opacity 400ms ease',
+            filter: `blur(2px)`,
+            willChange: 'offset-distance',
           }}
         />
-        {/* Concentrated beam — the flashlight */}
+        {/* A smaller, brighter core for the beam head */}
         <div
-          className={`shimmer-beam shimmer-speed-${speed}`}
+          className={`beam-dot ${speedClass}`}
           style={{
             position: 'absolute',
-            inset: 0,
-            borderRadius,
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, white 0%, ${hex} 40%, transparent 70%)`,
+            offsetPath: `inset(0 round ${borderRadius}px)`,
+            offsetRotate: '0deg',
+            transform: 'translate(-50%, -50%)',
             pointerEvents: 'none',
             zIndex: 2,
-            background: beamGradient,
-            mask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
-            WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
-            maskComposite: 'exclude',
-            WebkitMaskComposite: 'xor',
-            padding: '1.5px',
-            filter: `drop-shadow(0 0 6px ${shimmerColor}50)`,
-            transition: 'filter 400ms ease',
-          }}
-        />
-        {/* Outer glow — light spill beyond the edge */}
-        <div
-          className={`shimmer-beam shimmer-speed-${speed}`}
-          style={{
-            position: 'absolute',
-            inset: -3,
-            borderRadius: borderRadius + 3,
-            pointerEvents: 'none',
-            zIndex: 0,
-            background: beamGradient,
-            mask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
-            WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
-            maskComposite: 'exclude',
-            WebkitMaskComposite: 'xor',
-            padding: '4px',
-            filter: 'blur(14px)',
-            opacity: 0.6,
+            willChange: 'offset-distance',
           }}
         />
       </>
     );
 
+    // ── BLOOM: entire border glows uniformly ─────────────────────────
+
     const renderBloomMode = () => (
       <div
+        className="transition-all duration-500"
         style={{
           position: 'absolute',
           inset: 0,
           borderRadius,
           pointerEvents: 'none',
           zIndex: 1,
-          boxShadow: `0 0 0 1.5px ${shimmerColor}, 0 0 20px ${shimmerColor}30`,
-          transition: 'box-shadow 600ms ease',
+          boxShadow: `inset 0 0 0 1.5px ${hex}70, 0 0 30px ${hex}20`,
         }}
       />
     );
+
+    // ── HOLD: static solid border tint ───────────────────────────────
 
     const renderHoldMode = () => (
       <div
+        className="transition-colors duration-400"
         style={{
           position: 'absolute',
           inset: 0,
           borderRadius,
           pointerEvents: 'none',
           zIndex: 1,
-          boxShadow: `0 0 0 1.5px ${shimmerColor}`,
-          transition: 'box-shadow 400ms ease',
+          boxShadow: `inset 0 0 0 1.5px ${hex}90`,
         }}
       />
     );
 
+    // ── FLOOD: sapphire ripple from center (contained by PARENT overflow) ──
+
     const renderFloodMode = () => (
       <div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden"
-        style={{ borderRadius, zIndex: 3 }}
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        style={{ zIndex: 3 }}
       >
         <div
           className="rounded-full animate-ceremony-flood"
           style={{
-            width: '150%',
+            width: '200%',
             aspectRatio: '1',
             background: 'rgba(0, 64, 255, 0.85)',
           }}
@@ -191,15 +158,17 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
       </div>
     );
 
+    // ── DRAIN: reverse ripple ────────────────────────────────────────
+
     const renderDrainMode = () => (
       <div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden"
-        style={{ borderRadius, zIndex: 3 }}
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        style={{ zIndex: 3 }}
       >
         <div
           className="rounded-full animate-ceremony-drain"
           style={{
-            width: '150%',
+            width: '200%',
             aspectRatio: '1',
             background: 'rgba(0, 64, 255, 0.85)',
           }}
