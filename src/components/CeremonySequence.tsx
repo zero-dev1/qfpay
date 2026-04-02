@@ -1,56 +1,71 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useReducedMotion } from '../hooks/useReducedMotion';
 import { delay } from '../utils/delay';
+import type { ShimmerBorderRef } from './ShimmerBorder';
 
-// The .qf names that rotate each loop
+// ─── Data ────────────────────────────────────────────────────────────────────
+
 const QF_NAMES = ['vector.qf', 'memechi.qf', 'nova.qf', 'pulse.qf', 'zen.qf'];
-const AMOUNTS = ['150', '80', '250', '42', '1,000'];
+const AMOUNTS_RAW = [150, 80, 250, 42, 1000];
 
-type Phase = 'name' | 'amount' | 'preview' | 'burn' | 'sent' | 'complete' | 'reset';
-
-interface ShimmerBorderRef {
-  pulse: (count?: number) => Promise<void>;
-  setColor: (color: 'sapphire' | 'crimson' | 'white') => void;
-  flood: () => Promise<void>;
-  dissipate: () => Promise<void>;
+function formatAmount(n: number): string {
+  return n.toLocaleString('en-US');
 }
+
+function burnOf(n: number): string {
+  // 0.1% burn = n * 10 / 10000
+  const burn = (n * 10) / 10000;
+  // Show at least 2 decimal places for small burns
+  if (burn < 1) return burn.toFixed(2);
+  return burn.toLocaleString('en-US');
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Phase = 'name' | 'amount' | 'preview' | 'burn' | 'sent' | 'complete';
 
 interface CeremonySequenceProps {
-  shimmerRef: React.RefObject<ShimmerBorderRef>;
+  shimmerRef: React.RefObject<ShimmerBorderRef | null>;
+  reducedMotion: boolean;
 }
 
-const phaseVariants = {
-  initial: { opacity: 0, filter: 'blur(4px)', y: 8 },
-  animate: { opacity: 1, filter: 'blur(0px)', y: 0 },
-  exit: { opacity: 0, filter: 'blur(4px)', y: -8 },
-};
+// ─── Phase transition motion ─────────────────────────────────────────────────
 
-const phaseTransition = { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
+const PHASE_ENTER = { opacity: 0, filter: 'blur(6px)', y: 10 };
+const PHASE_VISIBLE = { opacity: 1, filter: 'blur(0px)', y: 0 };
+const PHASE_EXIT = { opacity: 0, filter: 'blur(6px)', y: -10 };
+const PHASE_TRANSITION = { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const };
+
+// ─── Phase components ────────────────────────────────────────────────────────
 
 function NamePhase({ name }: { name: string }) {
   const [displayed, setDisplayed] = useState('');
 
   useEffect(() => {
     let i = 0;
+    setDisplayed(''); // reset on name change
     const interval = setInterval(() => {
-      setDisplayed(name.slice(0, i + 1));
       i++;
+      setDisplayed(name.slice(0, i));
       if (i >= name.length) clearInterval(interval);
-    }, 110);  // ~110ms per character — matches RecipientScreen cadence
+    }, 110);
     return () => clearInterval(interval);
   }, [name]);
 
   return (
-    <motion.div variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={phaseTransition}
-      className="text-center"
+    <motion.div
+      initial={PHASE_ENTER}
+      animate={PHASE_VISIBLE}
+      exit={PHASE_EXIT}
+      transition={PHASE_TRANSITION}
+      className="flex items-center justify-center"
     >
-      <span className="font-clash font-bold text-[clamp(2rem,5vw,3rem)] text-[#F0F2F8]">
+      <span className="font-clash font-bold text-[clamp(1.8rem,5vw,2.75rem)] text-[#F0F2F8]">
         {displayed}
         <motion.span
           animate={{ opacity: [1, 0] }}
-          transition={{ repeat: Infinity, duration: 0.6 }}
-          className="text-[#0040FF]"
+          transition={{ repeat: Infinity, duration: 0.6, ease: 'easeInOut' }}
+          className="text-[#0040FF] ml-[1px]"
         >
           |
         </motion.span>
@@ -61,55 +76,86 @@ function NamePhase({ name }: { name: string }) {
 
 function AmountPhase({ amount }: { amount: string }) {
   return (
-    <motion.div variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={phaseTransition}
-      className="text-center"
+    <motion.div
+      initial={PHASE_ENTER}
+      animate={PHASE_VISIBLE}
+      exit={PHASE_EXIT}
+      transition={PHASE_TRANSITION}
+      className="flex items-center justify-center"
     >
-      <span className="font-clash font-bold text-[clamp(2.5rem,6vw,3.5rem)] text-[#F0F2F8]">
-        {amount} QF
+      <span className="font-clash font-bold text-[clamp(2.2rem,6vw,3.25rem)] text-[#F0F2F8]">
+        {amount} <span className="text-[rgba(122,139,171,0.5)]">QF</span>
       </span>
     </motion.div>
   );
 }
 
-function PreviewPhase({ sender, receiver, amount }: {
-  sender: string; receiver: string; amount: string;
+function PreviewPhase({
+  sender,
+  receiver,
+  amount,
+}: {
+  sender: string;
+  receiver: string;
+  amount: string;
 }) {
   return (
-    <motion.div variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={phaseTransition}
-      className="flex flex-col items-center gap-3"
+    <motion.div
+      initial={PHASE_ENTER}
+      animate={PHASE_VISIBLE}
+      exit={PHASE_EXIT}
+      transition={PHASE_TRANSITION}
+      className="flex flex-col items-center gap-2"
     >
       {/* Sender */}
-      <span className="font-clash font-semibold text-lg text-[rgba(122,139,171,0.7)]">
+      <span className="font-clash font-semibold text-[clamp(0.9rem,2.5vw,1.1rem)] text-[rgba(122,139,171,0.7)]">
         {sender}
       </span>
 
-      {/* Trailing line — sapphire pulse top to bottom */}
-      <div className="relative w-[2px] h-16 bg-[rgba(255,255,255,0.06)] overflow-hidden rounded-full">
+      {/* Trailing sapphire line — top to bottom */}
+      <div className="relative w-[1.5px] h-12 bg-[rgba(255,255,255,0.04)] overflow-hidden rounded-full">
         <motion.div
-          className="absolute top-0 left-0 w-full h-1/3 bg-[#0040FF] rounded-full"
+          className="absolute top-0 left-0 w-full rounded-full"
+          style={{
+            height: '33%',
+            background: '#0040FF',
+            boxShadow: '0 0 8px 2px rgba(0,64,255,0.35)',
+          }}
           animate={{ y: ['0%', '200%'] }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-          style={{ boxShadow: '0 0 8px 2px rgba(0, 64, 255, 0.4)' }}
+          transition={{
+            repeat: Infinity,
+            duration: 1.4,
+            ease: 'easeInOut',
+          }}
         />
       </div>
 
       {/* Amount */}
-      <span className="font-clash font-bold text-[clamp(1.5rem,4vw,2rem)] text-[#F0F2F8]">
-        {amount} QF
+      <span className="font-clash font-bold text-[clamp(1.4rem,4vw,2rem)] text-[#F0F2F8]">
+        {amount} <span className="text-[rgba(122,139,171,0.5)]">QF</span>
       </span>
 
-      {/* Trailing line — same as above */}
-      <div className="relative w-[2px] h-16 bg-[rgba(255,255,255,0.06)] overflow-hidden rounded-full">
+      {/* Trailing sapphire line — second pulse with offset */}
+      <div className="relative w-[1.5px] h-12 bg-[rgba(255,255,255,0.04)] overflow-hidden rounded-full">
         <motion.div
-          className="absolute top-0 left-0 w-full h-1/3 bg-[#0040FF] rounded-full"
+          className="absolute top-0 left-0 w-full rounded-full"
+          style={{
+            height: '33%',
+            background: '#0040FF',
+            boxShadow: '0 0 8px 2px rgba(0,64,255,0.35)',
+          }}
           animate={{ y: ['0%', '200%'] }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut', delay: 0.3 }}
-          style={{ boxShadow: '0 0 8px 2px rgba(0, 64, 255, 0.4)' }}
+          transition={{
+            repeat: Infinity,
+            duration: 1.4,
+            ease: 'easeInOut',
+            delay: 0.35,
+          }}
         />
       </div>
 
       {/* Receiver */}
-      <span className="font-clash font-semibold text-lg text-[#F0F2F8]">
+      <span className="font-clash font-semibold text-[clamp(0.9rem,2.5vw,1.1rem)] text-[#F0F2F8]">
         {receiver}
       </span>
     </motion.div>
@@ -118,13 +164,17 @@ function PreviewPhase({ sender, receiver, amount }: {
 
 function BurnPhase({ burnAmount }: { burnAmount: string }) {
   return (
-    <motion.div variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={phaseTransition}
-      className="text-center"
+    <motion.div
+      initial={PHASE_ENTER}
+      animate={PHASE_VISIBLE}
+      exit={PHASE_EXIT}
+      transition={PHASE_TRANSITION}
+      className="flex flex-col items-center justify-center"
     >
       <span className="font-clash font-bold text-[clamp(2rem,5vw,3rem)] text-[#FF2D2D]">
-        {burnAmount} QF
+        {burnAmount} <span className="text-[rgba(255,45,45,0.5)]">QF</span>
       </span>
-      <p className="mt-1 font-clash font-medium text-sm text-[rgba(255,45,45,0.6)] uppercase tracking-widest">
+      <p className="mt-2 font-clash font-medium text-[0.7rem] text-[rgba(255,45,45,0.5)] uppercase tracking-[0.2em]">
         burned
       </p>
     </motion.div>
@@ -133,13 +183,17 @@ function BurnPhase({ burnAmount }: { burnAmount: string }) {
 
 function SentPhase({ amount }: { amount: string }) {
   return (
-    <motion.div variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={phaseTransition}
-      className="text-center"
+    <motion.div
+      initial={PHASE_ENTER}
+      animate={PHASE_VISIBLE}
+      exit={PHASE_EXIT}
+      transition={PHASE_TRANSITION}
+      className="flex flex-col items-center justify-center"
     >
       <span className="font-clash font-bold text-[clamp(2rem,5vw,3rem)] text-[#F0F2F8]">
-        {amount} QF
+        {amount} <span className="text-[rgba(122,139,171,0.5)]">QF</span>
       </span>
-      <p className="mt-1 font-clash font-medium text-sm text-[rgba(122,139,171,0.7)] uppercase tracking-widest">
+      <p className="mt-2 font-clash font-medium text-[0.7rem] text-[rgba(122,139,171,0.5)] uppercase tracking-[0.2em]">
         sent
       </p>
     </motion.div>
@@ -151,20 +205,20 @@ function CompletePhase() {
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ type: 'spring', damping: 18, stiffness: 280 }}
       className="flex items-center justify-center"
     >
-      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+      <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
         <motion.path
           d="M16 33L27 44L48 20"
           stroke="#FFFFFF"
-          strokeWidth="4"
+          strokeWidth="3.5"
           strokeLinecap="round"
           strokeLinejoin="round"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
+          transition={{ duration: 0.45, ease: 'easeOut', delay: 0.1 }}
         />
       </svg>
     </motion.div>
@@ -173,128 +227,186 @@ function CompletePhase() {
 
 function StaticLayout() {
   return (
-    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-      <div className="space-y-6">
-        {/* Static name */}
-        <div>
-          <span className="font-clash font-bold text-[clamp(2rem,5vw,3rem)] text-[#F0F2F8]">
-            vector.qf
-          </span>
-        </div>
-        
-        {/* Static amount */}
-        <div>
-          <span className="font-clash font-bold text-[clamp(2.5rem,6vw,3.5rem)] text-[#F0F2F8]">
-            150 QF
-          </span>
-        </div>
-        
-        {/* Static checkmark */}
-        <div className="flex items-center justify-center pt-4">
-          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-            <path
-              d="M16 33L27 44L48 20"
-              stroke="#FFFFFF"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-      </div>
+    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center gap-5">
+      <span className="font-clash font-bold text-[clamp(1.8rem,5vw,2.75rem)] text-[#F0F2F8]">
+        vector.qf
+      </span>
+      <span className="font-clash font-bold text-[clamp(2.2rem,6vw,3.25rem)] text-[#F0F2F8]">
+        150 <span className="text-[rgba(122,139,171,0.5)]">QF</span>
+      </span>
+      <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
+        <path
+          d="M16 33L27 44L48 20"
+          stroke="#FFFFFF"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </div>
   );
 }
 
-export function CeremonySequence({ shimmerRef }: CeremonySequenceProps) {
-  const reducedMotion = useReducedMotion();
+// ─── Main choreography ───────────────────────────────────────────────────────
+
+export function CeremonySequence({
+  shimmerRef,
+  reducedMotion,
+}: CeremonySequenceProps) {
   const [phase, setPhase] = useState<Phase>('name');
   const [loopIndex, setLoopIndex] = useState(0);
-  const isMountedRef = useRef(false);
-  const name = QF_NAMES[loopIndex % QF_NAMES.length];
-  const amount = AMOUNTS[loopIndex % AMOUNTS.length];
-  const burnAmount = Math.floor(Number(amount) * 0.001).toString(); // 0.1% of amount
+  const mountedRef = useRef(true);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Reduced motion: render static layout
+  // Current loop data
+  const name = QF_NAMES[loopIndex % QF_NAMES.length];
+  const amountRaw = AMOUNTS_RAW[loopIndex % AMOUNTS_RAW.length];
+  const amountStr = formatAmount(amountRaw);
+  const burnStr = burnOf(amountRaw);
+
+  // Abortable delay — resolves immediately if the controller is aborted
+  const abortableDelay = useCallback(
+    (ms: number): Promise<void> =>
+      new Promise((resolve) => {
+        const signal = abortRef.current?.signal;
+        if (signal?.aborted) {
+          resolve();
+          return;
+        }
+        const timer = setTimeout(resolve, ms);
+        signal?.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer);
+            resolve();
+          },
+          { once: true }
+        );
+      }),
+    []
+  );
+
+  // Safe state setter — only updates if still mounted and not aborted
+  const safeSetPhase = useCallback(
+    (p: Phase) => {
+      if (mountedRef.current && !abortRef.current?.signal.aborted) {
+        setPhase(p);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    // Reduced motion — show static layout, no loop
+    if (reducedMotion) return;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    (async () => {
+      const shimmer = shimmerRef.current;
+      const signal = controller.signal;
+      const check = () => !signal.aborted && mountedRef.current;
+
+      // ── Beat 1 — Name types in (~2s) ──────────────────────────
+      safeSetPhase('name');
+      await abortableDelay(2000);
+      if (!check()) return;
+      if (shimmer) await shimmer.pulse(2);
+      if (!check()) return;
+
+      // ── Beat 2 — Amount lands (~1.5s) ─────────────────────────
+      safeSetPhase('amount');
+      await abortableDelay(1000);
+      if (!check()) return;
+      if (shimmer) await shimmer.pulse(2);
+      if (!check()) return;
+
+      // ── Beat 3 — Transaction preview (~2s) ────────────────────
+      safeSetPhase('preview');
+      await abortableDelay(1500);
+      if (!check()) return;
+      if (shimmer) await shimmer.pulse(1);
+      if (!check()) return;
+
+      // ── Beat 4 — Burn (~1.5s) ─────────────────────────────────
+      shimmer?.setColor('crimson');
+      safeSetPhase('burn');
+      await abortableDelay(200); // let crimson paint before pulse
+      if (!check()) return;
+      if (shimmer) await shimmer.pulse(2);
+      if (!check()) return;
+      await abortableDelay(400);
+      if (!check()) return;
+
+      // ── Beat 5 — Sent (~1s) ───────────────────────────────────
+      shimmer?.setColor('sapphire');
+      safeSetPhase('sent');
+      await abortableDelay(1000);
+      if (!check()) return;
+
+      // ── Beat 6 — Complete (~1.5s) ─────────────────────────────
+      safeSetPhase('complete');
+      await abortableDelay(200); // let checkmark start drawing
+      if (!check()) return;
+      if (shimmer) await shimmer.flood();
+      if (!check()) return;
+      await abortableDelay(1200);
+      if (!check()) return;
+
+      // ── Beat 7 — Reset (~0.5s) ────────────────────────────────
+      if (shimmer) await shimmer.dissipate();
+      if (!check()) return;
+      await abortableDelay(400);
+      if (!check()) return;
+
+      // ── Next loop ─────────────────────────────────────────────
+      if (mountedRef.current) {
+        setLoopIndex((prev) => prev + 1);
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, [loopIndex, reducedMotion, shimmerRef, safeSetPhase, abortableDelay]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // ── Reduced motion: static ──
   if (reducedMotion) {
     return <StaticLayout />;
   }
 
-  useEffect(() => {
-    // Main choreography timeline - start immediately on mount
-    isMountedRef.current = true;
-    runLoop();
-    
-    // Cleanup on unmount
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [loopIndex]);
-
-  async function runLoop() {
-    // Beat 1 — Name (~2s)
-    setPhase('name');
-    await delay(2000);  // typing animation takes ~1.5s, then 0.5s settle
-    await shimmerRef.current?.pulse(2);
-
-    // Beat 2 — Amount (~1.5s)
-    setPhase('amount');
-    await delay(1000);
-    await shimmerRef.current?.pulse(2);
-
-    // Beat 3 — Preview (~2s)
-    setPhase('preview');
-    await delay(1500);
-    await shimmerRef.current?.pulse(1);  // single bloom to initiate
-
-    // Beat 4 — Burn (~1.5s)
-    shimmerRef.current?.setColor('crimson');
-    setPhase('burn');
-    await shimmerRef.current?.pulse(2);
-    await delay(500);
-
-    // Beat 5 — Sent (~1s)
-    shimmerRef.current?.setColor('sapphire');
-    setPhase('sent');
-    await delay(1000);
-
-    // Beat 6 — Complete (~1.5s)
-    setPhase('complete');
-    await shimmerRef.current?.flood();
-    await delay(1200);
-
-    // Beat 7 — Reset (~0.5s)
-    await shimmerRef.current?.dissipate();
-    setPhase('reset');
-    await delay(300);
-
-    // Next loop - only if still mounted
-    if (isMountedRef.current) {
-      setLoopIndex(prev => prev + 1);
-    }
-  }
-
   return (
-    <div className="relative flex flex-col items-center justify-center h-full p-8">
+    <div className="absolute inset-0 flex items-center justify-center p-6">
       <AnimatePresence mode="wait">
-        {phase === 'name' && (
-          <NamePhase key="name" name={name} />
-        )}
+        {phase === 'name' && <NamePhase key={`name-${loopIndex}`} name={name} />}
         {phase === 'amount' && (
-          <AmountPhase key="amount" amount={amount} />
+          <AmountPhase key={`amount-${loopIndex}`} amount={amountStr} />
         )}
         {phase === 'preview' && (
-          <PreviewPhase key="preview" sender="you.qf" receiver={name} amount={amount} />
+          <PreviewPhase
+            key={`preview-${loopIndex}`}
+            sender="you.qf"
+            receiver={name}
+            amount={amountStr}
+          />
         )}
         {phase === 'burn' && (
-          <BurnPhase key="burn" burnAmount={burnAmount} />
+          <BurnPhase key={`burn-${loopIndex}`} burnAmount={burnStr} />
         )}
         {phase === 'sent' && (
-          <SentPhase key="sent" amount={amount} />
+          <SentPhase key={`sent-${loopIndex}`} amount={amountStr} />
         )}
-        {phase === 'complete' && (
-          <CompletePhase key="complete" />
-        )}
+        {phase === 'complete' && <CompletePhase key={`complete-${loopIndex}`} />}
       </AnimatePresence>
     </div>
   );
