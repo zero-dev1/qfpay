@@ -20,24 +20,13 @@ export default function CeremonyPreview() {
 
   return (
     <div
+      className="relative overflow-hidden rounded-2xl"
       style={{
-        width: 'min(400px, 85vw)',
-        aspectRatio: '3 / 4',
-        position: 'relative',
-        borderRadius: 24,
-        overflow: 'hidden',
-
-        // Glass material — CSS only, no liquid-glass-react
-        background: 'rgba(255, 255, 255, 0.02)',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
-        boxShadow: [
-          'inset 0 1px 0 0 rgba(255, 255, 255, 0.06)', // top edge catch
-          '0 0 0 1px rgba(0, 0, 0, 0.3)',                // outer hairline
-          '0 8px 40px rgba(0, 0, 0, 0.5)',                // shadow
-          '0 0 80px rgba(0, 64, 255, 0.04)',              // faint sapphire ambient
-        ].join(', '),
-        backdropFilter: 'blur(1px)',
-        WebkitBackdropFilter: 'blur(1px)',
+        maxWidth: 'min(520px, 90vw)',      // wider on desktop
+        aspectRatio: 'var(--panel-ratio)',
+        background: 'rgba(255, 255, 255, 0.015)',
+        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        // NO border property — the shimmer IS the border
       }}
     >
       {/* Shimmer border — only when motion is allowed */}

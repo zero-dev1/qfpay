@@ -14,13 +14,13 @@ export const ShimmerButton = ({
 }: ShimmerButtonProps) => {
   return (
     <motion.div className="relative group" whileTap={{ scale: 0.98 }}>
-      {/* Rotating conic-gradient shimmer border — 2s cycle per design.md */}
+      {/* Rotating conic-gradient shimmer border — continuous 4s cycle, faster on hover */}
       <div
         className="absolute -inset-[1px] rounded-2xl overflow-hidden"
         style={{ padding: '1px' }}
       >
         <div
-          className={`w-full h-full rounded-2xl ${reducedMotion ? '' : 'animate-shimmer-rotate'}`}
+          className={`w-full h-full rounded-2xl ${reducedMotion ? '' : 'animate-shimmer-rotate group-hover:animate-shimmer-rotate-fast'}`}
           style={{
             background: reducedMotion
               ? 'linear-gradient(135deg, rgba(0,64,255,0.4), rgba(0,64,255,0.15), rgba(0,64,255,0.4))'

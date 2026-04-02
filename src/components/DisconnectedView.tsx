@@ -12,12 +12,12 @@ export function DisconnectedView() {
   };
 
   return (
-    <div className="relative flex flex-col items-center min-h-screen bg-[#060A14] px-6 overflow-hidden"
-      style={{ paddingTop: 'clamp(2.5rem, 8vh, 5rem)' }}
+    <div className="relative flex flex-col items-center min-h-[100svh] bg-[#060A14] px-6 overflow-hidden"
+      style={{ paddingTop: 'clamp(1.5rem, 5vh, 3.5rem)' }}
     >
 
       {/* Headline block */}
-      <div className="text-center mb-8 md:mb-10">
+      <div className="text-center" style={{ marginBottom: 'clamp(1.5rem, 3vh, 2.5rem)' }}>
         <h1 className="font-clash font-semibold text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.1] tracking-tight text-[#F0F2F8]">
           Pay anyone with just a{' '}
           <span className="text-[#0040FF]">name</span>.
@@ -28,10 +28,12 @@ export function DisconnectedView() {
       </div>
 
       {/* Preview Panel */}
-      <CeremonyPreview />
+      <div className="flex-1 flex items-center justify-center w-full" style={{ maxWidth: 'min(520px, 90vw)' }}>
+        <CeremonyPreview />
+      </div>
 
       {/* CTA */}
-      <div className="mt-8 md:mt-10 pb-10">
+      <div style={{ marginTop: 'clamp(1rem, 2.5vh, 2rem)', marginBottom: 'clamp(1rem, 2.5vh, 2rem)' }}>
         <ShimmerButton onClick={openWalletModal}>
           Connect Wallet
         </ShimmerButton>

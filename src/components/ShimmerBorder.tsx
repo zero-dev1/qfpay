@@ -1,214 +1,231 @@
-import {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ShimmerColor = 'sapphire' | 'crimson' | 'white';
+type ShimmerColor = 'sapphire' | 'crimson';
+type ShimmerSpeed = 'ambient' | 'confirm' | 'fast';
+type ShimmerMode = 'trace' | 'bloom' | 'hold' | 'flood' | 'drain';
 
 export interface ShimmerBorderRef {
-  pulse: (count?: number) => Promise<void>;
+  setMode: (mode: ShimmerMode) => void;
   setColor: (color: ShimmerColor) => void;
+  setSpeed: (speed: ShimmerSpeed) => void;
   flood: () => Promise<void>;
-  dissipate: () => Promise<void>;
+  drain: () => Promise<void>;
 }
 
 interface ShimmerBorderProps {
   borderRadius?: number;
 }
 
-// ─── Color map ───────────────────────────────────────────────────────────────
-
-const COLOR_MAP: Record<ShimmerColor, string> = {
-  sapphire: '#0040FF',
-  crimson: '#FF2D2D',
-  white: '#FFFFFF',
-};
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
   ({ borderRadius = 24 }, ref) => {
     const [color, setColorState] = useState<ShimmerColor>('sapphire');
-    const [speed, setSpeed] = useState<'ambient' | 'pulse'>('ambient');
-    const [floodState, setFloodState] = useState<
-      'idle' | 'flooding' | 'holding' | 'dissipating'
-    >('idle');
-
-    const floodResolveRef = useRef<(() => void) | null>(null);
-    const dissipateResolveRef = useRef<(() => void) | null>(null);
+    const [speed, setSpeedState] = useState<ShimmerSpeed>('ambient');
+    const [mode, setModeState] = useState<ShimmerMode>('trace');
+    const [isAnimating, setIsAnimating] = useState(false);
 
     // ── Imperative API ─────────────────────────────────────────────────
 
-    const pulse = useCallback(
-      (count = 2): Promise<void> =>
-        new Promise((resolve) => {
-          setSpeed('pulse');
-          const totalMs = count * 300;
-          setTimeout(() => {
-            setSpeed('ambient');
-            resolve();
-          }, totalMs);
-        }),
-      []
-    );
+    const setMode = useCallback((newMode: ShimmerMode) => {
+      setModeState(newMode);
+    }, []);
 
-    const setColor = useCallback((c: ShimmerColor) => {
-      setColorState(c);
+    const setColor = useCallback((newColor: ShimmerColor) => {
+      setColorState(newColor);
+    }, []);
+
+    const setSpeed = useCallback((newSpeed: ShimmerSpeed) => {
+      setSpeedState(newSpeed);
     }, []);
 
     const flood = useCallback(
       (): Promise<void> =>
         new Promise((resolve) => {
-          floodResolveRef.current = resolve;
-          setFloodState('flooding');
+          setModeState('flood');
+          setIsAnimating(true);
+          setTimeout(() => {
+            setIsAnimating(false);
+            resolve();
+          }, 500);
         }),
       []
     );
 
-    const dissipate = useCallback(
+    const drain = useCallback(
       (): Promise<void> =>
         new Promise((resolve) => {
-          dissipateResolveRef.current = resolve;
-          setFloodState('dissipating');
+          setModeState('drain');
+          setIsAnimating(true);
+          setTimeout(() => {
+            setIsAnimating(false);
+            setModeState('trace'); // Return to trace after drain
+            resolve();
+          }, 500);
         }),
       []
     );
 
-    useImperativeHandle(ref, () => ({ pulse, setColor, flood, dissipate }), [
-      pulse, setColor, flood, dissipate,
+    useImperativeHandle(ref, () => ({ setMode, setColor, setSpeed, flood, drain }), [
+      setMode, setColor, setSpeed, flood, drain,
     ]);
-
-    // ── Flood animation end handler ────────────────────────────────────
-
-    const handleFloodAnimationEnd = useCallback(() => {
-      if (floodState === 'flooding') {
-        setFloodState('holding');
-        floodResolveRef.current?.();
-        floodResolveRef.current = null;
-      } else if (floodState === 'dissipating') {
-        setFloodState('idle');
-        dissipateResolveRef.current?.();
-        dissipateResolveRef.current = null;
-      }
-    }, [floodState]);
 
     // ── Derived styles ─────────────────────────────────────────────────
 
-    const hex = COLOR_MAP[color];
-    const isAmbient = speed === 'ambient';
+    const duration = speed === 'ambient' ? '6s' 
+      : speed === 'confirm' ? '1.2s' 
+      : '0.8s';
 
-    const shimmerStyle: React.CSSProperties = {
-      position: 'absolute',
-      inset: 0,
-      borderRadius,
-      pointerEvents: 'none',
-      zIndex: 1,
-      background: `conic-gradient(
-        from var(--ceremony-shimmer-angle),
-        transparent 0%,
-        transparent 2%,
-        ${hex} 10%,
-        transparent 18%,
-        transparent 100%
-      )`,
-      mask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
-      WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
-      maskComposite: 'exclude',
-      WebkitMaskComposite: 'xor',
-      padding: '1.5px',
-      animationName: isAmbient ? 'ceremony-shimmer-crawl' : 'ceremony-shimmer-pulse',
-      animationDuration: isAmbient ? '6s' : '0.3s',
-      animationTimingFunction: 'linear',
-      animationIterationCount: 'infinite',
-      animationFillMode: 'forwards',
-      filter: `drop-shadow(0 0 4px ${hex}40)`,
-    };
+    const shimmerColor = color === 'crimson' 
+      ? 'rgba(220, 38, 38, 0.8)' 
+      : 'rgba(0, 64, 255, 0.7)';
 
-    // ── Flood: wrapper centers, inner circle scales ────────────────────
+    const faintColor = color === 'crimson'
+      ? 'rgba(220, 38, 38, 0.05)'
+      : 'rgba(0, 64, 255, 0.05)';
 
-    const showFlood =
-      floodState === 'flooding' ||
-      floodState === 'holding' ||
-      floodState === 'dissipating';
+    // The concentrated light beam gradient - small bright arc (~30deg)
+    const beamGradient = `conic-gradient(
+      from var(--shimmer-angle),
+      transparent 0deg,
+      transparent 330deg,
+      ${shimmerColor} 345deg,
+      transparent 360deg
+    )`;
 
-    // The inner circle needs to be large enough to cover the panel
-    // at scale(1). We use a square whose side = 150% of the panel's
-    // larger dimension (height for a 3:4 panel). The wrapper centers
-    // it with flexbox so transform only does scale — no translate needed.
+    // Faint trail gradient for trace mode
+    const trailGradient = `conic-gradient(
+      from var(--shimmer-angle),
+      ${faintColor} 0deg,
+      ${faintColor} 330deg,
+      transparent 345deg,
+      transparent 360deg
+    )`;
 
-    const getFloodAnimation = (): React.CSSProperties => {
-      switch (floodState) {
-        case 'flooding':
-          return {
-            animation: 'ceremony-flood 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards',
-          };
-        case 'holding':
-          return {
-            transform: 'scale(1)',
-            opacity: 1,
-          };
-        case 'dissipating':
-          return {
-            animation: 'ceremony-dissipate 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards',
-          };
-        default:
-          return {};
-      }
-    };
-    return (
+    // ── Mode rendering ────────────────────────────────────────────────
+
+    const renderTraceMode = () => (
       <>
-        {/* Ambient shimmer ring */}
-        <div style={shimmerStyle} />
-
-        {/* Top rim highlight */}
+        {/* Faint trail */}
         <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: '10%',
-            right: '10%',
-            height: '1px',
-            background: `linear-gradient(90deg, transparent, ${hex}30, transparent)`,
+            inset: 0,
             borderRadius,
             pointerEvents: 'none',
             zIndex: 1,
+            background: trailGradient,
+            mask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
+            WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
+            maskComposite: 'exclude',
+            WebkitMaskComposite: 'xor',
+            padding: '1px',
+            animation: `shimmer-rotate ${duration} linear infinite`,
           }}
         />
+        {/* Concentrated beam */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius,
+            pointerEvents: 'none',
+            zIndex: 2,
+            background: beamGradient,
+            mask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
+            WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
+            maskComposite: 'exclude',
+            WebkitMaskComposite: 'xor',
+            padding: '1.5px',
+            animation: `shimmer-rotate ${duration} linear infinite`,
+            filter: `drop-shadow(0 0 4px ${shimmerColor}40)`,
+          }}
+        />
+        {/* Outer glow */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: -2,
+            borderRadius,
+            pointerEvents: 'none',
+            zIndex: 0,
+            background: beamGradient,
+            mask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
+            WebkitMask: `linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)`,
+            maskComposite: 'exclude',
+            WebkitMaskComposite: 'xor',
+            padding: '3px',
+            animation: `shimmer-rotate ${duration} linear infinite`,
+            filter: `blur(12px)`,
+          }}
+        />
+      </>
+    );
 
-        {/* Flood overlay — wrapper centers the circle, animation only scales */}
-        {showFlood && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              pointerEvents: 'none',
-              zIndex: 2,
-              overflow: 'hidden',
-              borderRadius,
-            }}
-          >
-            <div
-              style={{
-                // Circle large enough to cover the full panel at scale(1)
-                width: '160%',
-                height: '160%',
-                borderRadius: '50%',
-                background: COLOR_MAP.sapphire,
-                flexShrink: 0,
-                ...getFloodAnimation(),
-              }}
-              onAnimationEnd={handleFloodAnimationEnd}
-            />
-          </div>
-        )}
+    const renderBloomMode = () => (
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius,
+          pointerEvents: 'none',
+          zIndex: 1,
+          boxShadow: `0 0 0 1px ${shimmerColor}`,
+          transition: 'box-shadow 400ms ease',
+        }}
+      />
+    );
+
+    const renderHoldMode = () => (
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius,
+          pointerEvents: 'none',
+          zIndex: 1,
+          boxShadow: `0 0 0 1px ${shimmerColor}`,
+        }}
+      />
+    );
+
+    const renderFloodMode = () => (
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div
+          className="rounded-full animate-ceremony-flood"
+          style={{
+            width: '150%',       // oversized to cover corners
+            aspectRatio: '1',
+            background: 'rgba(0, 64, 255, 0.85)',
+          }}
+        />
+      </div>
+    );
+
+    const renderDrainMode = () => (
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div
+          className="rounded-full animate-ceremony-drain"
+          style={{
+            width: '150%',
+            aspectRatio: '1',
+            background: 'rgba(0, 64, 255, 0.85)',
+          }}
+        />
+      </div>
+    );
+
+    // ── Main render ─────────────────────────────────────────────────────
+
+    return (
+      <>
+        {mode === 'trace' && renderTraceMode()}
+        {mode === 'bloom' && renderBloomMode()}
+        {mode === 'hold' && renderHoldMode()}
+        {mode === 'flood' && renderFloodMode()}
+        {mode === 'drain' && renderDrainMode()}
       </>
     );
   }
