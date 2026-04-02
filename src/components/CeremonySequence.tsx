@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { delay } from '../utils/delay';
 import type { CeremonyPhase, BorderState, CeremonyLoop, CeremonySequenceProps, ShimmerBorderRef } from '../types/ceremony';
@@ -255,6 +255,16 @@ export function CeremonySequence({
   reducedMotion,
 }: CeremonySequenceProps) {
   const [phase, setPhase] = useState<CeremonyPhase>({ type: 'empty' });
+  const [phaseKey, setPhaseKey] = useState(0);
+  const prevPhaseType = useRef<string>('empty');
+
+  // Increment key only when phase TYPE changes (not on every text update)
+  useEffect(() => {
+    if (phase.type !== prevPhaseType.current) {
+      prevPhaseType.current = phase.type;
+      setPhaseKey(prev => prev + 1);
+    }
+  }, [phase.type]);
 
   useEffect(() => {
     // CORRECT — hook always runs, guards internally
@@ -314,7 +324,7 @@ export function CeremonySequence({
     <div className="absolute inset-0 flex items-center justify-center p-6">
       <AnimatePresence mode="wait" custom="forward">
         <motion.div
-          key={phase.type + '-' + Math.random()}  // unique key per phase
+          key={phaseKey}
           custom="forward"
           variants={transitionVariants}
           initial="enter"

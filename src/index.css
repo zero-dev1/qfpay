@@ -133,18 +133,14 @@ input:-webkit-autofill:focus {
   animation: shimmer-rotate 1.5s linear infinite;
 }
 
-/* ─── Ceremony-specific CSS keyframes and utilities ─── */
-
-/* Shimmer rotation — uses @property for GPU compositing */
-@property --shimmer-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
+/* Shimmer beam animation classes */
+.shimmer-beam {
+  animation: shimmer-rotate var(--shimmer-duration, 6s) linear infinite;
 }
 
-@keyframes shimmer-rotate {
-  to { --shimmer-angle: 360deg; }
-}
+.shimmer-speed-ambient { --shimmer-duration: 6s; }
+.shimmer-speed-confirm { --shimmer-duration: 1.2s; }
+.shimmer-speed-fast { --shimmer-duration: 0.8s; }
 
 /* Cursor blink */
 @keyframes cursor-blink {

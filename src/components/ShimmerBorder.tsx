@@ -99,6 +99,7 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
       <>
         {/* Faint trail */}
         <div
+          className={`shimmer-beam shimmer-speed-${speed}`}
           style={{
             position: 'absolute',
             inset: 0,
@@ -111,11 +112,11 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
             maskComposite: 'exclude',
             WebkitMaskComposite: 'xor',
             padding: '1px',
-            animation: `shimmer-rotate ${duration} linear infinite`,
           }}
         />
         {/* Concentrated beam */}
         <div
+          className={`shimmer-beam shimmer-speed-${speed}`}
           style={{
             position: 'absolute',
             inset: 0,
@@ -128,12 +129,12 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
             maskComposite: 'exclude',
             WebkitMaskComposite: 'xor',
             padding: '1.5px',
-            animation: `shimmer-rotate ${duration} linear infinite`,
             filter: `drop-shadow(0 0 4px ${shimmerColor}40)`,
           }}
         />
         {/* Outer glow */}
         <div
+          className={`shimmer-beam shimmer-speed-${speed}`}
           style={{
             position: 'absolute',
             inset: -2,
@@ -146,8 +147,7 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
             maskComposite: 'exclude',
             WebkitMaskComposite: 'xor',
             padding: '3px',
-            animation: `shimmer-rotate ${duration} linear infinite`,
-            filter: `blur(12px)`,
+            filter: 'blur(12px)',
           }}
         />
       </>
@@ -181,11 +181,14 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
     );
 
     const renderFloodMode = () => (
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div 
+        className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden"
+        style={{ borderRadius, zIndex: 3 }}
+      >
         <div
           className="rounded-full animate-ceremony-flood"
           style={{
-            width: '150%',       // oversized to cover corners
+            width: '150%',
             aspectRatio: '1',
             background: 'rgba(0, 64, 255, 0.85)',
           }}
@@ -194,7 +197,10 @@ const ShimmerBorder = forwardRef<ShimmerBorderRef, ShimmerBorderProps>(
     );
 
     const renderDrainMode = () => (
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div 
+        className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden"
+        style={{ borderRadius, zIndex: 3 }}
+      >
         <div
           className="rounded-full animate-ceremony-drain"
           style={{

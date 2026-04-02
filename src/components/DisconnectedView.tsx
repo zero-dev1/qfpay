@@ -25,9 +25,9 @@ export function DisconnectedView() {
     >
       {/* Headline — completely static */}
       <h1
-        className="font-clash font-semibold text-center px-4"
+        className="font-clash font-semibold text-center px-4 w-full overflow-hidden"
         style={{ 
-          fontSize: 'clamp(40px, 8vw, 72px)', 
+          fontSize: 'clamp(32px, 8vw, 72px)', 
           lineHeight: 1.05,
           color: '#F0F2F8'
         }}
