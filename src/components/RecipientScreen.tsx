@@ -6,7 +6,7 @@ import { detectAddressType, ss58ToEvmAddress } from '../utils/address';
 import { useWalletStore } from '../stores/walletStore';
 import { hapticLight, hapticDouble } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
-import { BRAND_BLUE, SUCCESS_GREEN } from '../lib/colors';
+import { BRAND_BLUE } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import {
   EXAMPLE_NAMES,
@@ -15,6 +15,63 @@ import {
   PAUSE_AFTER_TYPE,
   PAUSE_AFTER_DELETE,
 } from '../lib/recipientDemoNames';
+
+// ── Sonar ripple: 3 staggered rings that burst outward, pause, repeat ──
+const RING_COUNT = 3;
+const RING_STAGGER = 0.2;       // seconds between each ring start
+const BURST_DURATION = 1.3;     // how long each ring's expand animation takes
+const PAUSE_DURATION = 1.8;     // calm gap between bursts
+const CYCLE = BURST_DURATION + RING_STAGGER * (RING_COUNT - 1) + PAUSE_DURATION;
+
+const SonarRipple = () => {
+  const reducedMotion = useReducedMotion();
+  const [burstKey, setBurstKey] = useState(0);
+
+  // Restart the burst on a cycle timer
+  useEffect(() => {
+    if (reducedMotion) return;
+    const interval = setInterval(() => {
+      setBurstKey((k) => k + 1);
+    }, CYCLE * 1000);
+    return () => clearInterval(interval);
+  }, [reducedMotion]);
+
+  if (reducedMotion) {
+    // Static subtle ring for reduced motion
+    return (
+      <div
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          inset: -4,
+          border: '2px solid rgba(0,64,255,0.25)',
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      {Array.from({ length: RING_COUNT }).map((_, i) => (
+        <motion.div
+          key={`${burstKey}-${i}`}
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            inset: -4,
+            border: '2px solid #0040FF',
+            boxShadow: '0 0 10px rgba(0,64,255,0.25), inset 0 0 6px rgba(0,64,255,0.08)',
+          }}
+          initial={{ scale: 1, opacity: 0.5 - i * 0.12 }}
+          animate={{ scale: 2, opacity: 0 }}
+          transition={{
+            duration: BURST_DURATION,
+            delay: i * RING_STAGGER,
+            ease: [0.16, 1, 0.3, 1],
+          }}
+        />
+      ))}
+    </>
+  );
+};
 
 export const RecipientScreen = () => {
   const {
@@ -184,12 +241,14 @@ export const RecipientScreen = () => {
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center min-h-screen px-6 cursor-text"
+      className={`flex flex-col items-center justify-center min-h-screen px-6 ${
+        canContinue ? 'cursor-pointer' : 'cursor-text'
+      }`}
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
-      onClick={handleScreenTap}
+      onClick={canContinue ? handleAdvance : handleScreenTap}
     >
       {/* NO BACK BUTTON — this is the first step. 
           User can disconnect via ConnectedPill in top-right corner. */}
@@ -215,6 +274,7 @@ export const RecipientScreen = () => {
                   e.stopPropagation();
                   if (canContinue) handleAdvance();
                 }}
+                whileTap={{ scale: 0.92 }}
               >
                 {recipientAvatar ? (
                   <img
@@ -224,7 +284,7 @@ export const RecipientScreen = () => {
                     style={{
                       width: 64,
                       height: 64,
-                      border: '1.5px solid rgba(255,255,255,0.15)',
+                      border: '2px solid rgba(0,64,255,0.35)',
                       opacity: avatarLoaded ? 1 : 0,
                       transition: 'opacity 0.3s',
                     }}
@@ -237,7 +297,7 @@ export const RecipientScreen = () => {
                       width: 64,
                       height: 64,
                       background: 'rgba(255,255,255,0.08)',
-                      border: '1.5px solid rgba(255,255,255,0.15)',
+                      border: '2px solid rgba(0,64,255,0.35)',
                     }}
                   >
                     <span className="font-clash font-bold text-2xl text-white">
@@ -246,37 +306,8 @@ export const RecipientScreen = () => {
                   </div>
                 )}
 
-                <motion.div
-                  className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{ border: `1.5px solid ${BRAND_BLUE}` }}
-                  initial={{ scale: 1, opacity: 0.6 }}
-                  animate={{ scale: 1.6, opacity: 0 }}
-                  transition={{ duration: 0.65, ease: 'easeOut' }}
-                />
-
-                <motion.div
-                  className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{ border: '1px solid rgba(0,64,255,0.22)' }}
-                  animate={{ scale: [1, 1.09, 1] }}
-                  transition={{
-                    duration: 2.8,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                  }}
-                />
-
-                <div
-                  className="absolute animate-pulse-glow"
-                  style={{
-                    width: 10,
-                    height: 10,
-                    bottom: 1,
-                    right: 1,
-                    borderRadius: '50%',
-                    background: SUCCESS_GREEN,
-                    border: '2px solid #060A14',
-                  }}
-                />
+                {/* ── Sonar ripple rings ── */}
+                <SonarRipple />
               </motion.div>
 
               <motion.p
@@ -316,8 +347,8 @@ export const RecipientScreen = () => {
           />
 
           <div
-            className="flex items-center justify-center w-full"
-            style={{ minHeight: 80 }}
+            className="flex items-center justify-center w-full overflow-hidden"
+            style={{ height: 80 }}
           >
             {input ? (
               <span
@@ -402,28 +433,7 @@ export const RecipientScreen = () => {
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {canContinue && (
-              <motion.button
-                className="mt-6 flex items-center gap-1 focus-ring"
-                style={{ color: 'rgba(255,255,255,0.50)' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAdvance();
-                }}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                transition={{ ...EASE_SPRING }}
-                whileHover={{ color: 'rgba(255,255,255,0.90)' }}
-                whileTap={{ scale: 0.92 }}
-                aria-label="Continue"
-              >
-                <span style={{ fontSize: '1.75rem', lineHeight: 1 }}>›</span>
-              </motion.button>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                  </motion.div>
       </div>
     </motion.div>
   );

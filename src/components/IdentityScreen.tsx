@@ -59,6 +59,12 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
     return () => clearInterval(id);
   }, [balance]);
 
+  // ── Reset ceremony guard on every mount so reconnects replay ──
+  useEffect(() => {
+    ceremonyFired.current = false;
+    setCeremonyPhase('blooming');
+  }, []);
+
   // ── Ceremony sequencing — auto-advances to RecipientScreen when done ──
   useEffect(() => {
     if (!qnsName) return;
@@ -66,19 +72,17 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
     ceremonyFired.current = true;
 
     if (reducedMotion) {
-      // Skip ceremony entirely — go straight to recipient
       onCeremonyComplete?.();
       goToRecipient();
       return;
     }
 
-    // blooming 0–600ms · naming 600–1200ms · contracting 1200–1800ms · auto-advance 2200ms
     const t1 = setTimeout(() => setCeremonyPhase('naming'), 600);
     const t2 = setTimeout(() => setCeremonyPhase('contracting'), 1200);
     const t3 = setTimeout(() => {
       onCeremonyComplete?.();
       goToRecipient();
-    }, 2200); // 400ms hold after contracting finishes, then advance
+    }, 2200);
 
     return () => {
       clearTimeout(t1);
