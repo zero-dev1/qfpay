@@ -9,6 +9,7 @@ import { GAS_BUFFER } from '../config/contracts';
 import { hapticLight, hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 
 // Keyboard height constant for bottom padding on mobile
 const KEYBOARD_HEIGHT = 272;
@@ -26,20 +27,14 @@ export const AmountScreen = () => {
     setAmount, goToPreview, goBackToRecipient,
   } = usePaymentStore();
   const { ss58Address, address } = useWalletStore();
+  const isDesktop = useIsDesktop();
 
   const [amountInput, setAmountInput] = useState('');
   const [balance, setBalance] = useState<bigint>(0n);
   const [waveKey, setWaveKey] = useState(0);
-  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
 
   const prevCanContinueRef = useRef(false);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   useEffect(() => {
     const addr = ss58Address || address;

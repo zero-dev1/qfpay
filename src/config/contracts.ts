@@ -16,8 +16,9 @@ export const RESOLVER_ABI = QNSResolverABI as any[];
 export const BURN_BASIS_POINTS = 10n;
 export const BASIS_POINTS_DENOMINATOR = 10000n;
 
-// Gas buffer: 0.5 QF — user must have at least this much beyond send amount
-export const GAS_BUFFER = 500000000000000000n; // 0.5 * 1e18
+// Gas buffer: 0.01 QF — generous for Substrate-chain transaction fees
+// TODO: replace with dynamic fee estimate from runtime paymentInfo
+export const GAS_BUFFER = 10000000000000000n; // 0.01 * 1e18
 
 // QF has 18 decimals
 export const QF_DECIMALS = 18;

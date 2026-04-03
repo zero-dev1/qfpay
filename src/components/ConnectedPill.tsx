@@ -73,11 +73,12 @@ export function ConnectedPill() {
         className="flex items-center gap-2 cursor-pointer select-none"
         style={{
           background: '#060A14',
-          border: '1px solid rgba(0,64,255,0.15)',
+          border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: 9999,
           padding: '5px 12px 5px 5px',
-          boxShadow: '0 2px 12px rgba(0,64,255,0.2)',
+          transition: 'border-color 0.2s ease',
         }}
+        whileHover={{ borderColor: 'rgba(255,255,255,0.15)' }}
         whileTap={{ scale: 0.97 }}
         onClick={() => {
           hapticLight();
@@ -162,10 +163,10 @@ export function ConnectedPill() {
               background: 'linear-gradient(to bottom, rgba(12,16,25,0.98), rgba(6,10,20,1))',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(0,64,255,0.12)',
+              border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: 16,
               padding: 4,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.45), inset 0 -1px 0 rgba(0,64,255,0.2)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
             }}
             initial={{ opacity: 0, scale: 0.95, y: -6 }}
             animate={{ opacity: 1, scale: 1,    y: 0  }}

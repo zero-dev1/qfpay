@@ -9,6 +9,7 @@ import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { BRAND_BLUE } from '../lib/colors';
 import { CornerDownLeft } from 'lucide-react';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import {
   EXAMPLE_NAMES,
   TYPE_SPEED,
@@ -84,6 +85,7 @@ export const RecipientScreen = () => {
   } = usePaymentStore();
   const { address: senderAddress } = useWalletStore();
   const reducedMotion = useReducedMotion();
+  const isDesktop = useIsDesktop();
 
   const [input, setInput] = useState('');
   const [isResolving, setIsResolving] = useState(false);
@@ -230,13 +232,14 @@ export const RecipientScreen = () => {
 
   const canContinue = resolved && recipientAddress;
 
-  const handleAdvance = () => {
+  const handleAdvance = useCallback(() => {
     hapticLight();
     goToAmount();
-  };
+  }, [goToAmount]);
 
   // ── Desktop: Enter key to advance when resolved ──
   useEffect(() => {
+    if (!isDesktop) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && canContinue) {
         e.preventDefault();
@@ -245,7 +248,7 @@ export const RecipientScreen = () => {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [canContinue]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isDesktop, canContinue, handleAdvance]);
 
   // ── Tap anywhere to focus input (if not already focused) ──
   const handleScreenTap = () => {
@@ -336,35 +339,6 @@ export const RecipientScreen = () => {
                 <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
               </motion.p>
 
-              {/* Return key hint — desktop only, appears after resolution */}
-              {window.innerWidth >= 1024 && (
-                <motion.button
-                  className="inline-flex items-center gap-2 font-satoshi select-none mt-4"
-                  style={{
-                    fontSize: 13,
-                    color: 'rgba(255,255,255,0.40)',
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    borderRadius: 10,
-                    padding: '6px 14px',
-                    cursor: 'pointer',
-                    transition: 'border-color 0.2s ease, color 0.2s ease',
-                  }}
-                  onClick={(e) => { e.stopPropagation(); handleAdvance(); }}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25, duration: 0.3, ease: EASE_OUT_EXPO }}
-                  whileHover={{
-                    borderColor: 'rgba(255,255,255,0.25)',
-                    color: 'rgba(255,255,255,0.70)',
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="Continue"
-                >
-                  <CornerDownLeft className="w-3.5 h-3.5" />
-                  <span>Return</span>
-                </motion.button>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -438,26 +412,56 @@ export const RecipientScreen = () => {
             )}
           </div>
 
-          <motion.div
+          <div
+            className="relative overflow-hidden"
             style={{
               width: 'clamp(200px, 70%, 400px)',
               height: 2,
               borderRadius: 1,
               marginTop: 12,
             }}
-            animate={{
-              backgroundColor: error
-                ? 'rgba(245,158,11,0.70)'
-                : resolved
-                  ? BRAND_BLUE
-                  : 'rgba(0,64,255,0.30)',
-              scaleX: resolved && !error ? [0.6, 1] : 1,
-            }}
-            transition={{
-              backgroundColor: { duration: 0.3, ease: EASE_OUT_EXPO },
-              scaleX: { duration: 0.4, ease: EASE_OUT_EXPO },
-            }}
-          />
+          >
+            {/* Base underline color */}
+            <motion.div
+              className="absolute inset-0"
+              style={{ borderRadius: 1 }}
+              animate={{
+                backgroundColor: error
+                  ? 'rgba(245,158,11,0.70)'
+                  : resolved
+                    ? BRAND_BLUE
+                    : isResolving
+                      ? 'rgba(0,64,255,0.40)'
+                      : 'rgba(0,64,255,0.30)',
+                scaleX: resolved && !error ? [0.6, 1] : 1,
+              }}
+              transition={{
+                backgroundColor: { duration: 0.3, ease: EASE_OUT_EXPO },
+                scaleX: { duration: 0.4, ease: EASE_OUT_EXPO },
+              }}
+            />
+
+            {/* Shimmer sweep — only during resolution */}
+            <AnimatePresence>
+              {isResolving && !reducedMotion && (
+                <motion.div
+                  className="absolute top-0 bottom-0"
+                  style={{
+                    width: '40%',
+                    borderRadius: 1,
+                    background: 'linear-gradient(90deg, transparent, rgba(0,64,255,0.8), transparent)',
+                  }}
+                  initial={{ x: '-100%', opacity: 0 }}
+                  animate={{ x: '250%', opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    x: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' },
+                    opacity: { duration: 0.2 },
+                  }}
+                />
+              )}
+            </AnimatePresence>
+          </div>
 
           <AnimatePresence>
             {error && (
@@ -471,6 +475,39 @@ export const RecipientScreen = () => {
               >
                 {error}
               </motion.p>
+            )}
+          </AnimatePresence>
+
+          {/* Return pill — desktop only, below underline */}
+          <AnimatePresence>
+            {canContinue && isDesktop && (
+              <motion.button
+                className="inline-flex items-center gap-2 font-satoshi select-none mt-5"
+                style={{
+                  fontSize: 13,
+                  color: 'rgba(255,255,255,0.40)',
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  borderRadius: 10,
+                  padding: '6px 14px',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.2s ease, color 0.2s ease',
+                }}
+                onClick={(e) => { e.stopPropagation(); handleAdvance(); }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ delay: 0.15, duration: 0.3, ease: EASE_OUT_EXPO }}
+                whileHover={{
+                  borderColor: 'rgba(255,255,255,0.25)',
+                  color: 'rgba(255,255,255,0.70)',
+                }}
+                whileTap={{ scale: 0.95 }}
+                aria-label="Continue"
+              >
+                <CornerDownLeft className="w-3.5 h-3.5" />
+                <span>Return</span>
+              </motion.button>
             )}
           </AnimatePresence>
 
