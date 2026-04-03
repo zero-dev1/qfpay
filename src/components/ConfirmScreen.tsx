@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Check, CornerDownLeft } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
 import { formatQF, truncateAddress } from '../utils/qfpay';
@@ -13,10 +13,23 @@ import { EASE_OUT_EXPO } from '../lib/animations';
 import { BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useIsDesktop } from '../hooks/useIsDesktop';
+import { AvatarFallback } from './AvatarFallback';
 
-// ─── HoldToSendButton — extracted as standalone to prevent re-mount on parent re-render ───
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-function HoldToSendButton({
+const HOLD_DURATION = 1200;
+const TICK_INTERVAL = 16;
+const BUTTON_SIZE = 80;
+const IDLE_ROTATION_DURATION = 5; // seconds per revolution
+const SHIMMER_ARC_DEG = 28; // degrees of the bright wedge
+
+// ─── HoldToSignButton ─────────────────────────────────────────────────────────
+// Circular button with conic-gradient-based clockwise fill.
+// Idle: a bright wedge traces the border clockwise.
+// Hold: the wedge leaves sapphire fill behind as it sweeps.
+// Release: fill retracts counterclockwise with rubber-band easing.
+
+function HoldToSignButton({
   holdProgress,
   buttonState,
   isHolding,
@@ -39,17 +52,45 @@ function HoldToSendButton({
   reducedMotion: boolean;
   isDesktop: boolean;
 }) {
+  // Track idle rotation angle for seamless transition to hold
+  const idleAngleRef = useRef(0);
+  const idleRafRef = useRef<number | null>(null);
+  const idleStartRef = useRef<number>(Date.now());
+
   const isIdle = buttonState === 'idle' && !isHolding && holdProgress === 0 && !sweepPaused;
 
-  // Reduced-motion: static filled button
+  // Continuously track idle angle so we know where the shimmer is when hold starts
+  useEffect(() => {
+    if (!isIdle || reducedMotion) return;
+    idleStartRef.current = Date.now();
+    const tick = () => {
+      const elapsed = (Date.now() - idleStartRef.current) / 1000;
+      idleAngleRef.current = (elapsed / IDLE_ROTATION_DURATION) * 360 % 360;
+      idleRafRef.current = requestAnimationFrame(tick);
+    };
+    idleRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (idleRafRef.current) cancelAnimationFrame(idleRafRef.current);
+    };
+  }, [isIdle, reducedMotion]);
+
+  // Compute the conic gradient for the current state
+  const fillDegrees = holdProgress * 360;
+
+  // During hold or retract, we need to know the start angle
+  // We capture it when hold begins (via the parent storing idleAngleRef.current)
+  // For simplicity, we always start the fill from top (0deg / 12 o'clock)
+  // The idle shimmer also starts from top, so the visual is coherent
+
+  // Reduced-motion: static filled circle
   if (reducedMotion) {
     return (
       <motion.button
-        className="relative select-none font-satoshi font-semibold"
+        className="relative select-none font-satoshi font-semibold flex items-center justify-center"
         style={{
-          width: 'clamp(260px, 80%, 320px)',
-          height: 56,
-          borderRadius: 9999,
+          width: BUTTON_SIZE,
+          height: BUTTON_SIZE,
+          borderRadius: '50%',
           background: BRAND_BLUE,
           border: 'none',
           WebkitTapHighlightColor: 'transparent',
@@ -57,152 +98,141 @@ function HoldToSendButton({
         onPointerDown={buttonState === 'idle' ? onPointerDown : undefined}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerLeave}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.35, duration: 0.4, ease: EASE_OUT_EXPO }}
       >
-        <span className="relative z-10 text-base text-white">
+        <span className="relative z-10 text-sm text-white font-semibold">
           {buttonState === 'confirmed' ? (
-            <Check className="w-5 h-5 inline" />
+            <Check className="w-5 h-5" />
           ) : buttonState === 'signing' ? (
-            <Loader2 className="w-5 h-5 inline animate-spin" />
-          ) : isDesktop ? (
-            <span className="inline-flex items-center gap-2">
-              Send
-              <CornerDownLeft className="w-3.5 h-3.5 opacity-50" />
-            </span>
+            <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
-            'Send'
+            'Sign'
           )}
         </span>
       </motion.button>
     );
   }
 
+  // Build the conic gradient string
+  const buildGradient = () => {
+    if (buttonState === 'confirmed') {
+      return BRAND_BLUE;
+    }
+
+    if (buttonState === 'signing') {
+      return BRAND_BLUE;
+    }
+
+    // Holding or retracting: filled arc + glowing leading edge
+    if (isHolding || holdProgress > 0) {
+      const fillEnd = fillDegrees;
+      const glowStart = fillEnd;
+      const glowEnd = Math.min(fillEnd + 12, 360);
+      
+      return `conic-gradient(from 0deg, ${BRAND_BLUE} 0deg, ${BRAND_BLUE} ${fillEnd}deg, rgba(100,160,255,0.6) ${glowStart}deg, rgba(100,160,255,0.6) ${glowEnd}deg, transparent ${glowEnd}deg, transparent 360deg)`;
+    }
+
+    // Idle: just a thin bright wedge tracing the border
+    // This is handled by the CSS animation on the idle shimmer div
+    return 'transparent';
+  };
+
   return (
     <motion.button
-      className="relative overflow-hidden select-none font-satoshi font-semibold"
+      className="relative select-none font-satoshi font-semibold flex items-center justify-center"
       style={{
-        width: 'clamp(260px, 80%, 320px)',
-        height: 56,
-        borderRadius: 9999,
-        border: '1px solid rgba(255,255,255,0.10)',
+        width: BUTTON_SIZE,
+        height: BUTTON_SIZE,
+        borderRadius: '50%',
+        border: '1.5px solid rgba(255,255,255,0.10)',
         background: 'transparent',
         WebkitTapHighlightColor: 'transparent',
+        overflow: 'hidden',
       }}
       onPointerDown={buttonState === 'idle' ? onPointerDown : undefined}
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerLeave}
-      whileTap={buttonState === 'idle' ? { scale: 0.97 } : undefined}
-      initial={{ opacity: 0, y: 12 }}
+      whileTap={buttonState === 'idle' ? { scale: 0.94 } : undefined}
+      initial={{ opacity: 0, scale: 0.8 }}
       animate={{
         opacity: 1,
-        y: 0,
-        scale: pulsing ? [1, 1.03, 1] : 1,
+        scale: pulsing ? [1, 1.06, 1] : 1,
       }}
       transition={{ delay: 0.35, duration: 0.4, ease: EASE_OUT_EXPO }}
     >
-      {/* Idle shimmer border — subtle rotating glow on the edge */}
-      {isIdle && (
-        <div
-          className="absolute -inset-[1px] pointer-events-none"
-          style={{ borderRadius: 9999, overflow: 'hidden' }}
-        >
-          <motion.div
-            className="w-full h-full"
-            style={{
-              background:
-                'conic-gradient(from 0deg, rgba(0,64,255,0.02) 0%, rgba(100,160,255,0.3) 8%, rgba(0,64,255,0.02) 16%, rgba(0,64,255,0.02) 100%)',
-            }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-          />
-        </div>
-      )}
-
-      {/* Idle sweep fill — dissolves at end of cycle */}
+      {/* Idle shimmer — rotating bright wedge on the border ring */}
       {isIdle && (
         <motion.div
-          className="absolute inset-0"
-          style={{ background: BRAND_BLUE, borderRadius: 9999 }}
-          animate={{
-            x: ['-100%', '0%', '0%'],
-            opacity: [0, 0.7, 0],
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            borderRadius: '50%',
+            background: `conic-gradient(from 0deg, rgba(0,64,255,0.02) 0%, rgba(100,160,255,0.35) 4%, rgba(140,180,255,0.15) 8%, rgba(0,64,255,0.02) 12%, transparent 16%, transparent 100%)`,
+            // Mask to show only the border ring (2px wide)
+            mask: 'radial-gradient(circle, transparent calc(50% - 2.5px), black calc(50% - 2px), black 50%, transparent calc(50% + 0.5px))',
+            WebkitMask: 'radial-gradient(circle, transparent calc(50% - 2.5px), black calc(50% - 2px), black 50%, transparent calc(50% + 0.5px))',
           }}
-          transition={{
-            duration: 2.4,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            times: [0, 0.65, 1],
-            repeatDelay: 0.8,
-          }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: IDLE_ROTATION_DURATION, repeat: Infinity, ease: 'linear' }}
         />
       )}
 
-      {/* Active hold fill */}
+      {/* Hold fill — conic gradient that grows clockwise */}
       {(isHolding || (holdProgress > 0 && buttonState === 'idle')) && (
         <motion.div
-          className="absolute inset-0"
-          style={{ background: BRAND_BLUE, borderRadius: 9999 }}
-          animate={{
-            x: `${-100 + holdProgress * 100}%`,
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            borderRadius: '50%',
+            background: buildGradient(),
           }}
           transition={
             isHolding
               ? { duration: 0 }
-              : { duration: 0.3, ease: [0.25, 1, 0.5, 1] }
+              : { duration: 0.3, ease: [0.25, 1, 0.5, 1] } // Rubber-band retract
           }
         />
       )}
 
-      {/* Confirmed state fill */}
-      {buttonState === 'confirmed' && (
+      {/* Confirmed / signing full fill */}
+      {(buttonState === 'confirmed' || buttonState === 'signing') && (
         <motion.div
-          className="absolute inset-0"
-          style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+          className="absolute inset-0 pointer-events-none flex items-center justify-center"
+          style={{
+            borderRadius: '50%',
+            background: BRAND_BLUE,
+          }}
           initial={{ opacity: 0.8 }}
           animate={{ opacity: 1 }}
-        />
-      )}
-
-      {/* Signing spinner overlay */}
-      {buttonState === 'signing' && (
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{ background: BRAND_BLUE, borderRadius: 9999 }}
         >
-          <Loader2 className="w-5 h-5 text-white animate-spin" />
+          {buttonState === 'signing' && (
+            <Loader2 className="w-5 h-5 text-white animate-spin" />
+          )}
         </motion.div>
       )}
 
-      {/* Label — base layer at 25% always visible */}
+      {/* Label */}
       <span
-        className="relative z-10 text-base pointer-events-none"
+        className="relative z-10 text-sm pointer-events-none select-none"
         style={{
           color:
-            isHolding || buttonState !== 'idle'
+            isHolding || holdProgress > 0.3 || buttonState !== 'idle'
               ? 'rgba(255,255,255,0.95)'
               : 'rgba(255,255,255,0.25)',
           transition: 'color 0.15s ease',
         }}
       >
         {buttonState === 'confirmed' ? (
-          <Check className="w-5 h-5 inline" />
+          <Check className="w-5 h-5" />
         ) : buttonState === 'signing' ? (
           ''
         ) : isDesktop ? (
-          <span className="inline-flex items-center gap-2">
-            Send
-            <CornerDownLeft
-              className="w-3.5 h-3.5"
-              style={{
-                opacity: isHolding ? 0.8 : 0.4,
-                transition: 'opacity 0.15s ease',
-              }}
-            />
+          <span className="flex flex-col items-center gap-0.5">
+            <span>Sign</span>
+            <CornerDownLeft className="w-3 h-3" style={{ opacity: isHolding ? 0.8 : 0.35 }} />
           </span>
         ) : (
-          'Send'
+          'Sign'
         )}
       </span>
     </motion.button>
@@ -245,20 +275,15 @@ export const ConfirmScreen = () => {
   const halfwayHapticRef = useRef(false);
   const isHoldingRef = useRef(false);
   const holdProgressRef = useRef(0);
+  const retractRafRef = useRef<number | null>(null);
 
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
   const isBroadcasting = phase === 'broadcasting';
-  const HOLD_DURATION = 1200;
-  const TICK_INTERVAL = 16;
 
   // Keep refs in sync with state
-  useEffect(() => {
-    isHoldingRef.current = isHolding;
-  }, [isHolding]);
-  useEffect(() => {
-    holdProgressRef.current = holdProgress;
-  }, [holdProgress]);
+  useEffect(() => { isHoldingRef.current = isHolding; }, [isHolding]);
+  useEffect(() => { holdProgressRef.current = holdProgress; }, [holdProgress]);
 
   // ── handleConfirm ─────────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
@@ -336,9 +361,14 @@ export const ConfirmScreen = () => {
     setError, goBackToAmount,
   ]);
 
-  // ── Press-and-hold logic — refs prevent dependency thrashing ──────────────
+  // ── Press-and-hold logic ──────────────────────────────────────────────────
   const startHold = useCallback(() => {
     if (buttonState !== 'idle') return;
+    // Cancel any ongoing retract animation
+    if (retractRafRef.current) {
+      cancelAnimationFrame(retractRafRef.current);
+      retractRafRef.current = null;
+    }
     setIsHolding(true);
     halfwayHapticRef.current = false;
     hapticLight();
@@ -367,22 +397,53 @@ export const ConfirmScreen = () => {
       clearInterval(holdTimerRef.current);
       holdTimerRef.current = null;
     }
-    // Pulse once if released early
-    if (isHoldingRef.current && holdProgressRef.current > 0 && holdProgressRef.current < 1) {
-      setPulsing(true);
-      setTimeout(() => setPulsing(false), 350);
-      // Pause sweep for 500ms after release
-      setSweepPaused(true);
-      setTimeout(() => setSweepPaused(false), 500);
-    }
+
+    const wasHolding = isHoldingRef.current;
+    const hadProgress = holdProgressRef.current;
+
     setIsHolding(false);
-    setHoldProgress(0);
+
+    if (wasHolding && hadProgress > 0 && hadProgress < 1) {
+      // Animate retract: progress decreases over 300ms with rubber-band easing
+      const startProgress = hadProgress;
+      const startTime = performance.now();
+      const RETRACT_DURATION = 300;
+
+      const retractTick = () => {
+        const elapsed = performance.now() - startTime;
+        const t = Math.min(elapsed / RETRACT_DURATION, 1);
+        // Ease-out: fast start, gentle deceleration
+        const eased = 1 - Math.pow(1 - t, 3);
+        const current = startProgress * (1 - eased);
+
+        setHoldProgress(current);
+
+        if (t < 1) {
+          retractRafRef.current = requestAnimationFrame(retractTick);
+        } else {
+          setHoldProgress(0);
+          retractRafRef.current = null;
+          // Pulse feedback
+          setPulsing(true);
+          setTimeout(() => setPulsing(false), 350);
+          // Pause idle shimmer for 500ms
+          setSweepPaused(true);
+          setTimeout(() => setSweepPaused(false), 500);
+        }
+      };
+
+      retractRafRef.current = requestAnimationFrame(retractTick);
+    } else {
+      setHoldProgress(0);
+    }
+
     halfwayHapticRef.current = false;
   }, []); // No state deps — uses refs
 
   useEffect(() => {
     return () => {
       if (holdTimerRef.current) clearInterval(holdTimerRef.current);
+      if (retractRafRef.current) cancelAnimationFrame(retractRafRef.current);
     };
   }, []);
 
@@ -427,22 +488,27 @@ export const ConfirmScreen = () => {
     if (taught || buttonState !== 'idle') return;
     sessionStorage.setItem('qfpay-send-taught', 'true');
     let elapsed = 0;
-    const target = HOLD_DURATION * 0.6;
+    const target = HOLD_DURATION * 0.55;
     const up = setInterval(() => {
       elapsed += TICK_INTERVAL;
-      setHoldProgress(Math.min(elapsed / HOLD_DURATION, 0.6));
+      setHoldProgress(Math.min(elapsed / HOLD_DURATION, 0.55));
       if (elapsed >= target) {
         clearInterval(up);
-        const down = setInterval(() => {
-          setHoldProgress((prev) => {
-            const next = prev - 0.04;
-            if (next <= 0) {
-              clearInterval(down);
-              return 0;
-            }
-            return next;
-          });
-        }, TICK_INTERVAL);
+        // Retract demo
+        const startProgress = 0.55;
+        const startTime = performance.now();
+        const tick = () => {
+          const e = performance.now() - startTime;
+          const t = Math.min(e / 400, 1);
+          const eased = 1 - Math.pow(1 - t, 3);
+          setHoldProgress(startProgress * (1 - eased));
+          if (t < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            setHoldProgress(0);
+          }
+        };
+        requestAnimationFrame(tick);
       }
     }, TICK_INTERVAL);
     return () => clearInterval(up);
@@ -481,130 +547,133 @@ export const ConfirmScreen = () => {
         )}
       </AnimatePresence>
 
-      {/* Recipient avatar — 56px, shared layoutId */}
-      <motion.div layoutId="recipient-avatar" className="mb-3">
-        {recipientAvatar ? (
-          <img
-            src={recipientAvatar}
-            alt={recipientName || 'Recipient'}
-            className="rounded-full object-cover"
+      {/* ── Glass Card ── */}
+      <motion.div
+        className="relative w-full flex flex-col items-center"
+        style={{
+          maxWidth: 380,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 24,
+          padding: '32px 24px 28px',
+          overflow: 'hidden',
+        }}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05, duration: 0.45, ease: EASE_OUT_EXPO }}
+      >
+        {/* Card shimmer — a soft light that sweeps across the top edge occasionally */}
+        {!reducedMotion && (
+          <motion.div
+            className="absolute top-0 left-0 right-0 pointer-events-none"
             style={{
-              width: 56,
-              height: 56,
-              border: '1.5px solid rgba(255,255,255,0.15)',
+              height: 1,
+              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
+            }}
+            animate={{ x: ['-100%', '200%'] }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              repeatDelay: 3,
             }}
           />
-        ) : (
-          <div
-            className="rounded-full flex items-center justify-center"
+        )}
+
+        {/* Recipient avatar — 56px, shared layoutId */}
+        <motion.div layoutId="recipient-avatar" className="mb-3">
+          <AvatarFallback
+            name={recipientName}
+            address={recipientAddress}
+            avatarUrl={recipientAvatar}
+            size={56}
+            borderColor="rgba(255,255,255,0.12)"
+          />
+        </motion.div>
+
+        {/* Recipient name.qf */}
+        <motion.p
+          className="font-satoshi font-medium text-sm mb-6"
+          style={{ color: 'rgba(255,255,255,0.70)' }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.35, ease: EASE_OUT_EXPO }}
+        >
+          {recipientName ? (
+            <>
+              <span>{recipientName}</span>
+              <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
+            </>
+          ) : (
+            truncateAddress(recipientAddress || '')
+          )}
+        </motion.p>
+
+        {/* Hero amount */}
+        <motion.div
+          className="flex items-baseline justify-center gap-2 mb-2"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.4, ease: EASE_OUT_EXPO }}
+        >
+          <span
+            className="font-clash font-bold selectable"
             style={{
-              width: 56,
-              height: 56,
-              background:
-                'linear-gradient(135deg, rgba(0,64,255,0.25), rgba(0,64,255,0.08))',
-              border: '1.5px solid rgba(255,255,255,0.12)',
+              fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
+              letterSpacing: '-0.02em',
+              color: 'rgba(255,255,255,0.95)',
             }}
           >
-            <span className="font-clash font-bold text-lg text-white">
-              {(recipientName || '?')[0].toUpperCase()}
-            </span>
-          </div>
-        )}
+            {formatQF(recipientAmountWei)}
+          </span>
+          <span
+            className="font-clash font-bold"
+            style={{
+              fontSize: 'clamp(1.25rem, 3vw, 2rem)',
+              color: `${BRAND_BLUE}cc`,
+            }}
+          >
+            QF
+          </span>
+        </motion.div>
+
+        {/* Footnotes — inside card, no underline */}
+        <motion.div
+          className="flex flex-col items-center gap-1 mt-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25, duration: 0.4 }}
+        >
+          <span
+            className="font-satoshi text-[13px] selectable"
+            style={{ color: 'rgba(255,255,255,0.30)' }}
+          >
+            {formatQF(totalRequiredWei)} QF leaves your wallet
+          </span>
+          <span
+            className="font-satoshi text-[13px]"
+            style={{ color: `${BURN_CRIMSON}80` }}
+          >
+            🔥 {formatQF(burnAmountWei)} QF burns
+          </span>
+        </motion.div>
       </motion.div>
 
-      {/* Recipient name.qf */}
-      <motion.p
-        className="font-satoshi font-medium text-sm mb-6"
-        style={{ color: 'rgba(255,255,255,0.70)' }}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.35, ease: EASE_OUT_EXPO }}
-      >
-        {recipientName ? (
-          <>
-            <span>{recipientName}</span>
-            <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
-          </>
-        ) : (
-          truncateAddress(recipientAddress || '')
-        )}
-      </motion.p>
-
-      {/* Hero amount */}
-      <motion.div
-        className="flex items-baseline justify-center gap-2 mb-4"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, duration: 0.4, ease: EASE_OUT_EXPO }}
-      >
-        <span
-          className="font-clash font-bold selectable"
-          style={{
-            fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
-            letterSpacing: '-0.02em',
-            color: 'rgba(255,255,255,0.95)',
-          }}
-        >
-          {formatQF(recipientAmountWei)}
-        </span>
-        <span
-          className="font-clash font-bold"
-          style={{
-            fontSize: 'clamp(1.25rem, 3vw, 2rem)',
-            color: `${BRAND_BLUE}cc`,
-          }}
-        >
-          QF
-        </span>
-      </motion.div>
-
-      {/* Sapphire underline */}
-      <motion.div
-        style={{
-          width: 'clamp(200px, 60%, 360px)',
-          height: 2,
-          borderRadius: 1,
-          backgroundColor: BRAND_BLUE,
-        }}
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ delay: 0.2, duration: 0.4, ease: EASE_OUT_EXPO }}
-      />
-
-      {/* Footnotes */}
-      <motion.div
-        className="flex flex-col items-center gap-1 mt-4 mb-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3, duration: 0.4 }}
-      >
-        <span
-          className="font-satoshi text-[13px] selectable"
-          style={{ color: 'rgba(255,255,255,0.35)' }}
-        >
-          {formatQF(totalRequiredWei)} QF leaves your wallet
-        </span>
-        <span
-          className="font-satoshi text-[13px]"
-          style={{ color: `${BURN_CRIMSON}99` }}
-        >
-          🔥 {formatQF(burnAmountWei)} QF burns
-        </span>
-      </motion.div>
-
-      {/* HoldToSendButton */}
-      <HoldToSendButton
-        holdProgress={holdProgress}
-        buttonState={buttonState}
-        isHolding={isHolding}
-        pulsing={pulsing}
-        sweepPaused={sweepPaused}
-        onPointerDown={startHold}
-        onPointerUp={cancelHold}
-        onPointerLeave={cancelHold}
-        reducedMotion={reducedMotion}
-        isDesktop={isDesktop}
-      />
+      {/* ── Circular HoldToSign button — below the card ── */}
+      <div className="mt-8">
+        <HoldToSignButton
+          holdProgress={holdProgress}
+          buttonState={buttonState}
+          isHolding={isHolding}
+          pulsing={pulsing}
+          sweepPaused={sweepPaused}
+          onPointerDown={startHold}
+          onPointerUp={cancelHold}
+          onPointerLeave={cancelHold}
+          reducedMotion={reducedMotion}
+          isDesktop={isDesktop}
+        />
+      </div>
     </motion.div>
   );
 };

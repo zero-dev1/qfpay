@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { BRAND_BLUE, BG_SURFACE, SUCCESS_GREEN } from '../lib/colors';
 import { EASE_OUT_EXPO } from '../lib/animations';
+import { AvatarFallback } from './AvatarFallback';
 
 export type NamePillState = 'default' | 'dimmed' | 'connecting' | 'arriving';
 export type NamePillSize = 'sm' | 'md';
@@ -63,23 +64,13 @@ export function NamePill({
         className="relative flex-shrink-0"
         style={{ width: avatarSize, height: avatarSize }}
       >
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={name}
-            className="w-full h-full rounded-full object-cover"
-          />
-        ) : (
-          <div
-            className="w-full h-full rounded-full flex items-center justify-center font-clash font-bold text-white"
-            style={{
-              background: color,
-              fontSize: isMd ? '0.8125rem' : '0.6875rem',
-            }}
-          >
-            {name[0]?.toUpperCase()}
-          </div>
-        )}
+        <AvatarFallback
+          name={name}
+          address={null}
+          avatarUrl={avatarUrl || null}
+          size={avatarSize}
+          className="rounded-full"
+        />
 
         {/* ── Presence dot ── */}
         <div

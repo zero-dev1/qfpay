@@ -9,6 +9,8 @@ import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { BRAND_BLUE, BURN_CRIMSON, SUCCESS_GREEN } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { NamePill } from './NamePill';
+import { AvatarFallback } from './AvatarFallback';
+import { generateAvatarGradient } from '../utils/avatarFallback';
 import { ShimmerButton } from './hero/ShimmerButton';
 
 // ─── Recipient color lookup (matches ThresholdScene identities) ───────────────
@@ -241,7 +243,7 @@ export const AnimationSequence = () => {
                 >
                   <NamePill
                     name={senderName || 'you'}
-                    color="linear-gradient(135deg, #3B82F6, #4F46E5)"
+                    color={generateAvatarGradient(senderName || 'you')}
                     avatarUrl={senderAvatar ?? undefined}
                     state={senderDimmed ? 'dimmed' : 'default'}
                   />
@@ -360,7 +362,7 @@ export const AnimationSequence = () => {
                 >
                   <NamePill
                     name={recipientName || recipientAddress?.slice(0, 8) || '?'}
-                    color={recipientColor}
+                    color={generateAvatarGradient(recipientName || recipientAddress?.slice(0, 8) || '?')}
                     avatarUrl={recipientAvatar ?? undefined}
                     state={recipientArriving ? 'arriving' : 'default'}
                   />
@@ -444,13 +446,12 @@ export const AnimationSequence = () => {
               <div className="flex items-center gap-3 mb-4">
                 {/* Sender chip */}
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  {senderAvatar ? (
-                    <img src={senderAvatar} alt={senderName || ''} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <span className="font-clash font-bold text-[10px] text-white">{(senderName || 'Y')[0].toUpperCase()}</span>
-                    </div>
-                  )}
+                  <AvatarFallback
+                    name={senderName}
+                    address={null}
+                    avatarUrl={senderAvatar}
+                    size={24}
+                  />
                   <span className="font-satoshi text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
                     {senderName ? <>{senderName}<span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span></> : 'you'}
                   </span>
@@ -466,13 +467,12 @@ export const AnimationSequence = () => {
                       ? <>{recipientName}<span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span></>
                       : displayRecipient}
                   </span>
-                  {recipientAvatar ? (
-                    <img src={recipientAvatar} alt={recipientName || ''} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <span className="font-clash font-bold text-[10px] text-white">{(recipientName || '?')[0].toUpperCase()}</span>
-                    </div>
-                  )}
+                  <AvatarFallback
+                    name={recipientName}
+                    address={recipientAddress}
+                    avatarUrl={recipientAvatar}
+                    size={24}
+                  />
                 </div>
               </div>
 

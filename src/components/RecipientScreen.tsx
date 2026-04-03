@@ -8,6 +8,7 @@ import { hapticLight, hapticDouble } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { BRAND_BLUE } from '../lib/colors';
 import { CornerDownLeft } from 'lucide-react';
+import { AvatarFallback } from './AvatarFallback';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useIsDesktop } from '../hooks/useIsDesktop';
 import {
@@ -93,6 +94,8 @@ export const RecipientScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [placeholder, setPlaceholder] = useState('');
   const [avatarLoaded, setAvatarLoaded] = useState(false);
+  const [showTapHint, setShowTapHint] = useState(false);
+  const tapHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -230,10 +233,36 @@ export const RecipientScreen = () => {
     return () => clearTimeout(timer);
   }, [input, resolveInput]);
 
+  // Show "Tap to continue" hint after 3.5s if user hasn't advanced
+  useEffect(() => {
+    if (!resolved || !recipientName || error) {
+      setShowTapHint(false);
+      if (tapHintTimerRef.current) {
+        clearTimeout(tapHintTimerRef.current);
+        tapHintTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Don't show if user has done this before
+    const taught = sessionStorage.getItem('qfpay-tap-taught');
+    if (taught) return;
+
+    tapHintTimerRef.current = setTimeout(() => {
+      setShowTapHint(true);
+    }, 3500);
+
+    return () => {
+      if (tapHintTimerRef.current) clearTimeout(tapHintTimerRef.current);
+    };
+  }, [resolved, recipientName, error]);
+
   const canContinue = resolved && recipientAddress;
 
   const handleAdvance = useCallback(() => {
     hapticLight();
+    sessionStorage.setItem('qfpay-tap-taught', 'true');
+    setShowTapHint(false);
     goToAmount();
   }, [goToAmount]);
 
@@ -290,35 +319,16 @@ export const RecipientScreen = () => {
                 }}
                 whileTap={{ scale: 0.92 }}
               >
-                {recipientAvatar ? (
-                  <img
-                    src={recipientAvatar}
-                    alt={recipientName}
-                    className="rounded-full object-cover"
-                    style={{
-                      width: 64,
-                      height: 64,
-                      border: '2px solid rgba(0,64,255,0.35)',
-                      opacity: avatarLoaded ? 1 : 0,
-                      transition: 'opacity 0.3s',
-                    }}
-                    onLoad={() => setAvatarLoaded(true)}
-                  />
-                ) : (
-                  <div
-                    className="rounded-full flex items-center justify-center"
-                    style={{
-                      width: 64,
-                      height: 64,
-                      background: 'rgba(255,255,255,0.08)',
-                      border: '2px solid rgba(0,64,255,0.35)',
-                    }}
-                  >
-                    <span className="font-clash font-bold text-2xl text-white">
-                      {recipientName[0].toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                <AvatarFallback
+                  name={recipientName}
+                  address={recipientAddress}
+                  avatarUrl={recipientAvatar}
+                  size={64}
+                  borderColor="rgba(0,64,255,0.35)"
+                  borderWidth={2}
+                  onLoad={() => setAvatarLoaded(true)}
+                  style={recipientAvatar ? { opacity: avatarLoaded ? 1 : 0, transition: 'opacity 0.3s' } : undefined}
+                />
 
                 {/* ── Sonar ripple rings ── */}
                 <SonarRipple />
@@ -338,6 +348,22 @@ export const RecipientScreen = () => {
                 {recipientName}
                 <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
               </motion.p>
+
+              {/* Tap to continue hint — appears after 3.5s on first use */}
+              <AnimatePresence>
+                {showTapHint && (
+                  <motion.p
+                    className="font-satoshi text-xs mt-2"
+                    style={{ color: 'rgba(255,255,255,0.25)' }}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+                  >
+                    Tap to continue
+                  </motion.p>
+                )}
+              </AnimatePresence>
 
             </motion.div>
           )}

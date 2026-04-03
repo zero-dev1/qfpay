@@ -7,6 +7,7 @@ import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
 import { hapticLight, hapticMedium } from '../utils/haptics';
 import { BG_SURFACE, SUCCESS_GREEN, BRAND_BLUE } from '../lib/colors';
 import { EASE_OUT_EXPO } from '../lib/animations';
+import { AvatarFallback } from './AvatarFallback';
 
 export function ConnectedPill() {
   const { qnsName, address, ss58Address, avatarUrl, disconnect } = useWalletStore();
@@ -91,20 +92,13 @@ export function ConnectedPill() {
           className="relative flex-shrink-0 rounded-full overflow-hidden"
           style={{ width: 40, height: 40 }}
         >
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={name}
-              className="w-full h-full rounded-full object-cover"
-            />
-          ) : (
-            <div
-              className="w-full h-full rounded-full flex items-center justify-center font-clash font-bold text-white text-sm"
-              style={{ background: 'linear-gradient(135deg, #3B82F6, #4F46E5)' }}
-            >
-              {initial}
-            </div>
-          )}
+          <AvatarFallback
+            name={qnsName}
+            address={address}
+            avatarUrl={avatarUrl}
+            size={40}
+          />
+
           {/* Presence dot */}
           <div
             className="absolute bottom-0 right-0 rounded-full animate-pulse-glow"
