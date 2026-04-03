@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Check, CornerDownLeft } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Loader2, Check, CornerDownLeft, ChevronLeft } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
 import { formatQF, truncateAddress } from '../utils/qfpay';
@@ -21,7 +21,6 @@ const HOLD_DURATION = 1200;
 const TICK_INTERVAL = 16;
 const BUTTON_SIZE = 80;
 const IDLE_ROTATION_DURATION = 5; // seconds per revolution
-const SHIMMER_ARC_DEG = 28; // degrees of the bright wedge
 
 // ─── HoldToSignButton ─────────────────────────────────────────────────────────
 // Circular button with conic-gradient-based clockwise fill.
@@ -52,35 +51,13 @@ function HoldToSignButton({
   reducedMotion: boolean;
   isDesktop: boolean;
 }) {
-  // Track idle rotation angle for seamless transition to hold
-  const idleAngleRef = useRef(0);
-  const idleRafRef = useRef<number | null>(null);
-  const idleStartRef = useRef<number>(Date.now());
 
   const isIdle = buttonState === 'idle' && !isHolding && holdProgress === 0 && !sweepPaused;
 
-  // Continuously track idle angle so we know where the shimmer is when hold starts
-  useEffect(() => {
-    if (!isIdle || reducedMotion) return;
-    idleStartRef.current = Date.now();
-    const tick = () => {
-      const elapsed = (Date.now() - idleStartRef.current) / 1000;
-      idleAngleRef.current = (elapsed / IDLE_ROTATION_DURATION) * 360 % 360;
-      idleRafRef.current = requestAnimationFrame(tick);
-    };
-    idleRafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (idleRafRef.current) cancelAnimationFrame(idleRafRef.current);
-    };
-  }, [isIdle, reducedMotion]);
 
   // Compute the conic gradient for the current state
   const fillDegrees = holdProgress * 360;
 
-  // During hold or retract, we need to know the start angle
-  // We capture it when hold begins (via the parent storing idleAngleRef.current)
-  // For simplicity, we always start the fill from top (0deg / 12 o'clock)
-  // The idle shimmer also starts from top, so the visual is coherent
 
   // Reduced-motion: static filled circle
   if (reducedMotion) {
@@ -519,7 +496,8 @@ export const ConfirmScreen = () => {
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6"
+      className="flex flex-col items-center h-[100svh] overflow-hidden px-6"
+      style={{ paddingTop: '12vh' }}
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
@@ -529,8 +507,8 @@ export const ConfirmScreen = () => {
       <AnimatePresence>
         {!isBroadcasting && (
           <motion.button
-            className="fixed top-5 left-5 z-50 transition-opacity hover:opacity-60 focus-ring"
-            style={{ fontSize: '1.75rem', lineHeight: 1, color: 'rgba(255,255,255,0.25)' }}
+            className="fixed top-5 left-5 z-50 focus-ring"
+            style={{ color: 'rgba(255,255,255,0.25)' }}
             onClick={() => {
               hapticLight();
               goBackToAmount();
@@ -542,46 +520,39 @@ export const ConfirmScreen = () => {
             whileTap={{ scale: 0.9 }}
             aria-label="Back"
           >
-            ‹
+            <ChevronLeft className="w-6 h-6" />
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* ── Glass Card ── */}
+      {/* ── Sapphire Card ── */}
       <motion.div
         className="relative w-full flex flex-col items-center"
         style={{
           maxWidth: 380,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.07)',
+          background: 'linear-gradient(to bottom, rgba(0,64,255,0.05) 0%, rgba(0,64,255,0.02) 40%, rgba(6,10,20,0.95) 100%)',
+          borderTop: '1px solid rgba(0,64,255,0.18)',
+          borderLeft: '1px solid rgba(0,64,255,0.10)',
+          borderRight: '1px solid rgba(0,64,255,0.10)',
+          borderBottom: '1px solid rgba(0,64,255,0.04)',
           borderRadius: 24,
-          padding: '32px 24px 28px',
+          padding: '44px 24px 40px',
           overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(0,64,255,0.06), 0 2px 12px rgba(0,64,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)',
         }}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05, duration: 0.45, ease: EASE_OUT_EXPO }}
       >
-        {/* Card shimmer — a soft light that sweeps across the top edge occasionally */}
+        {/* Diagonal shimmer sweep — sapphire, adapted from QNS pricing cards */}
         {!reducedMotion && (
-          <motion.div
-            className="absolute top-0 left-0 right-0 pointer-events-none"
-            style={{
-              height: 1,
-              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
-            }}
-            animate={{ x: ['-100%', '200%'] }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              repeatDelay: 3,
-            }}
+          <div
+            className="absolute inset-0 rounded-3xl pointer-events-none z-0 confirm-card-shimmer"
           />
         )}
 
         {/* Recipient avatar — 56px, shared layoutId */}
-        <motion.div layoutId="recipient-avatar" className="mb-3">
+        <motion.div layoutId="recipient-avatar" className="relative z-10 mb-3">
           <AvatarFallback
             name={recipientName}
             address={recipientAddress}
@@ -593,7 +564,7 @@ export const ConfirmScreen = () => {
 
         {/* Recipient name.qf */}
         <motion.p
-          className="font-satoshi font-medium text-sm mb-6"
+          className="relative z-10 font-satoshi font-medium text-sm mb-8"
           style={{ color: 'rgba(255,255,255,0.70)' }}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -611,7 +582,7 @@ export const ConfirmScreen = () => {
 
         {/* Hero amount */}
         <motion.div
-          className="flex items-baseline justify-center gap-2 mb-2"
+          className="relative z-10 flex items-baseline justify-center gap-2 mb-4"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.4, ease: EASE_OUT_EXPO }}
@@ -637,9 +608,9 @@ export const ConfirmScreen = () => {
           </span>
         </motion.div>
 
-        {/* Footnotes — inside card, no underline */}
+        {/* Footnotes — inside card */}
         <motion.div
-          className="flex flex-col items-center gap-1 mt-2"
+          className="relative z-10 flex flex-col items-center gap-1 mt-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.25, duration: 0.4 }}
@@ -660,7 +631,7 @@ export const ConfirmScreen = () => {
       </motion.div>
 
       {/* ── Circular HoldToSign button — below the card ── */}
-      <div className="mt-8">
+      <div className="mt-12">
         <HoldToSignButton
           holdProgress={holdProgress}
           buttonState={buttonState}
@@ -674,6 +645,26 @@ export const ConfirmScreen = () => {
           isDesktop={isDesktop}
         />
       </div>
+
+      {/* Shimmer keyframe — CSS animation, not Framer, for performance */}
+      <style>{`
+        @keyframes confirmShimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .confirm-card-shimmer {
+          background: linear-gradient(
+            110deg,
+            transparent 20%,
+            rgba(0,64,255,0.03) 40%,
+            rgba(0,64,255,0.06) 50%,
+            rgba(0,64,255,0.03) 60%,
+            transparent 80%
+          );
+          background-size: 200% 100%;
+          animation: confirmShimmer 5.5s infinite;
+        }
+      `}</style>
     </motion.div>
   );
 };

@@ -10,31 +10,8 @@ import { BRAND_BLUE, BURN_CRIMSON, SUCCESS_GREEN } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { NamePill } from './NamePill';
 import { AvatarFallback } from './AvatarFallback';
-import { generateAvatarGradient } from '../utils/avatarFallback';
 import { ShimmerButton } from './hero/ShimmerButton';
 
-// ─── Recipient color lookup (matches ThresholdScene identities) ───────────────
-const RECIPIENT_COLORS: Record<string, string> = {
-  vector: 'linear-gradient(135deg, #3B82F6, #4338CA)',
-  memechi: 'linear-gradient(135deg, #EC4899, #E11D48)',
-  steve: 'linear-gradient(135deg, #94A3B8, #3B82F6)',
-  hwmedia: 'linear-gradient(135deg, #8B5CF6, #9333EA)',
-  teddy: 'linear-gradient(135deg, #FB923C, #F59E0B)',
-  satoshiflipper: 'linear-gradient(135deg, #F97316, #DC2626)',
-  altcoinsensei: 'linear-gradient(135deg, #22D3EE, #3B82F6)',
-  soapy: 'linear-gradient(135deg, #2DD4BF, #10B981)',
-  patrick: 'linear-gradient(135deg, #60A5FA, #06B6D4)',
-  drprofit: 'linear-gradient(135deg, #22C55E, #14B8A6)',
-  vitalik: 'linear-gradient(135deg, #A855F7, #7C3AED)',
-  cryptomonk: 'linear-gradient(135deg, #6366F1, #2563EB)',
-  overdose: 'linear-gradient(135deg, #EF4444, #EA580C)',
-  amg: 'linear-gradient(135deg, #FBBF24, #EAB308)',
-  bino: 'linear-gradient(135deg, #EC4899, #C026D3)',
-  nils: 'linear-gradient(135deg, #94A3B8, #6B7280)',
-  cryptouser28: 'linear-gradient(135deg, #60A5FA, #64748B)',
-  sam: 'linear-gradient(135deg, #34D399, #22C55E)',
-};
-const FALLBACK_COLOR = 'linear-gradient(135deg, #10B981, #0D9488)';
 
 // ─── AnimationSequence ────────────────────────────────────────────────────────
 
@@ -64,9 +41,6 @@ export const AnimationSequence = () => {
       ? recipientAddress.slice(0, 8) + '...' + recipientAddress.slice(-4)
       : '?';
 
-  const recipientColor = recipientName
-    ? (RECIPIENT_COLORS[recipientName.toLowerCase()] ?? FALLBACK_COLOR)
-    : FALLBACK_COLOR;
 
   // ── Screen 5 animation state ──
   const [bgColor,           setBgColor]           = useState('#060A14');
@@ -243,7 +217,6 @@ export const AnimationSequence = () => {
                 >
                   <NamePill
                     name={senderName || 'you'}
-                    color={generateAvatarGradient(senderName || 'you')}
                     avatarUrl={senderAvatar ?? undefined}
                     state={senderDimmed ? 'dimmed' : 'default'}
                   />
@@ -362,7 +335,6 @@ export const AnimationSequence = () => {
                 >
                   <NamePill
                     name={recipientName || recipientAddress?.slice(0, 8) || '?'}
-                    color={generateAvatarGradient(recipientName || recipientAddress?.slice(0, 8) || '?')}
                     avatarUrl={recipientAvatar ?? undefined}
                     state={recipientArriving ? 'arriving' : 'default'}
                   />
@@ -451,6 +423,7 @@ export const AnimationSequence = () => {
                     address={null}
                     avatarUrl={senderAvatar}
                     size={24}
+                    className="flex-shrink-0"
                   />
                   <span className="font-satoshi text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
                     {senderName ? <>{senderName}<span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span></> : 'you'}
@@ -472,6 +445,7 @@ export const AnimationSequence = () => {
                     address={recipientAddress}
                     avatarUrl={recipientAvatar}
                     size={24}
+                    className="flex-shrink-0"
                   />
                 </div>
               </div>

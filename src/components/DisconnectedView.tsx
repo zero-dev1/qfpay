@@ -103,14 +103,15 @@ export function DisconnectedView() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="h-[100svh] flex flex-col items-center justify-center bg-[#060A14] px-6 overflow-hidden"
+      className="h-[100svh] flex flex-col items-center bg-[#060A14] px-6 overflow-hidden"
+      style={{ paddingTop: 'clamp(20vh, 28vh, 32vh)' }}
     >
       {/* Ambient background glow — slow breathing radial gradient */}
       {!reducedMotion && (
         <motion.div
           className="fixed inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse at 50% 40%, rgba(0,64,255,0.04) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse at 50% 30%, rgba(0,64,255,0.04) 0%, transparent 70%)',
           }}
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
@@ -213,7 +214,7 @@ export function DisconnectedView() {
         )}
       </AnimatePresence>
 
-      {/* Footer link */}
+      {/* Footer links — platform-aware */}
       <p
         className="font-satoshi text-xs relative z-10"
         style={{
@@ -223,13 +224,21 @@ export function DisconnectedView() {
       >
         Don't have a wallet?{' '}
         <a
-          href="https://talisman.xyz"
+          href="https://metamask.io"
           target="_blank"
           rel="noopener noreferrer"
-          className="hover:underline"
           style={{ color: BRAND_BLUE }}
         >
-          Get Talisman
+          MetaMask
+        </a>
+        {' · '}
+        <a
+          href={isDesktop ? 'https://talisman.xyz' : 'https://subwallet.app'}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: BRAND_BLUE }}
+        >
+          {isDesktop ? 'Talisman' : 'SubWallet'}
         </a>
       </p>
     </motion.div>

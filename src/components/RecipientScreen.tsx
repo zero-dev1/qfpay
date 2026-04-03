@@ -524,10 +524,6 @@ export const RecipientScreen = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
                 transition={{ delay: 0.15, duration: 0.3, ease: EASE_OUT_EXPO }}
-                whileHover={{
-                  borderColor: 'rgba(255,255,255,0.25)',
-                  color: 'rgba(255,255,255,0.70)',
-                }}
                 whileTap={{ scale: 0.95 }}
                 aria-label="Continue"
               >

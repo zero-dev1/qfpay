@@ -8,7 +8,6 @@ export type NamePillSize = 'sm' | 'md';
 
 interface NamePillProps {
   name: string;
-  color: string;           // CSS gradient string for avatar fallback
   avatarUrl?: string;
   state?: NamePillState;
   size?: NamePillSize;
@@ -17,7 +16,6 @@ interface NamePillProps {
 
 export function NamePill({
   name,
-  color,
   avatarUrl,
   state = 'default',
   size = 'md',
