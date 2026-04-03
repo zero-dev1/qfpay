@@ -13,11 +13,37 @@ body {
   font-family: 'Satoshi', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
 }
 
 html {
   overscroll-behavior: none;
+}
+
+/* ─── Native app feel ─── */
+body {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Allow text selection only on explicitly marked content */
+.selectable,
+.selectable * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Buttons use default cursor — pointer only for links */
+button,
+[role="button"] {
+  cursor: default;
+}
+
+a[href] {
+  cursor: pointer;
 }
 
 /* ─── Selection ─── */

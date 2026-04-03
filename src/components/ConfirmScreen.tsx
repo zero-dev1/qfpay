@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Check } from 'lucide-react';
+import { Loader2, Check, CornerDownLeft } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
@@ -14,12 +14,207 @@ import { BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useIsDesktop } from '../hooks/useIsDesktop';
 
+// ─── HoldToSendButton — extracted as standalone to prevent re-mount on parent re-render ───
+
+function HoldToSendButton({
+  holdProgress,
+  buttonState,
+  isHolding,
+  pulsing,
+  sweepPaused,
+  onPointerDown,
+  onPointerUp,
+  onPointerLeave,
+  reducedMotion,
+  isDesktop,
+}: {
+  holdProgress: number;
+  buttonState: 'idle' | 'signing' | 'confirmed';
+  isHolding: boolean;
+  pulsing: boolean;
+  sweepPaused: boolean;
+  onPointerDown: () => void;
+  onPointerUp: () => void;
+  onPointerLeave: () => void;
+  reducedMotion: boolean;
+  isDesktop: boolean;
+}) {
+  const isIdle = buttonState === 'idle' && !isHolding && holdProgress === 0 && !sweepPaused;
+
+  // Reduced-motion: static filled button
+  if (reducedMotion) {
+    return (
+      <motion.button
+        className="relative select-none font-satoshi font-semibold"
+        style={{
+          width: 'clamp(260px, 80%, 320px)',
+          height: 56,
+          borderRadius: 9999,
+          background: BRAND_BLUE,
+          border: 'none',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+        onPointerDown={buttonState === 'idle' ? onPointerDown : undefined}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35, duration: 0.4, ease: EASE_OUT_EXPO }}
+      >
+        <span className="relative z-10 text-base text-white">
+          {buttonState === 'confirmed' ? (
+            <Check className="w-5 h-5 inline" />
+          ) : buttonState === 'signing' ? (
+            <Loader2 className="w-5 h-5 inline animate-spin" />
+          ) : isDesktop ? (
+            <span className="inline-flex items-center gap-2">
+              Send
+              <CornerDownLeft className="w-3.5 h-3.5 opacity-50" />
+            </span>
+          ) : (
+            'Send'
+          )}
+        </span>
+      </motion.button>
+    );
+  }
+
+  return (
+    <motion.button
+      className="relative overflow-hidden select-none font-satoshi font-semibold"
+      style={{
+        width: 'clamp(260px, 80%, 320px)',
+        height: 56,
+        borderRadius: 9999,
+        border: '1px solid rgba(255,255,255,0.10)',
+        background: 'transparent',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+      onPointerDown={buttonState === 'idle' ? onPointerDown : undefined}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerLeave}
+      whileTap={buttonState === 'idle' ? { scale: 0.97 } : undefined}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        scale: pulsing ? [1, 1.03, 1] : 1,
+      }}
+      transition={{ delay: 0.35, duration: 0.4, ease: EASE_OUT_EXPO }}
+    >
+      {/* Idle shimmer border — subtle rotating glow on the edge */}
+      {isIdle && (
+        <div
+          className="absolute -inset-[1px] pointer-events-none"
+          style={{ borderRadius: 9999, overflow: 'hidden' }}
+        >
+          <motion.div
+            className="w-full h-full"
+            style={{
+              background:
+                'conic-gradient(from 0deg, rgba(0,64,255,0.02) 0%, rgba(100,160,255,0.3) 8%, rgba(0,64,255,0.02) 16%, rgba(0,64,255,0.02) 100%)',
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+          />
+        </div>
+      )}
+
+      {/* Idle sweep fill — dissolves at end of cycle */}
+      {isIdle && (
+        <motion.div
+          className="absolute inset-0"
+          style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+          animate={{
+            x: ['-100%', '0%', '0%'],
+            opacity: [0, 0.7, 0],
+          }}
+          transition={{
+            duration: 2.4,
+            repeat: Infinity,
+            ease: 'easeInOut',
+            times: [0, 0.65, 1],
+            repeatDelay: 0.8,
+          }}
+        />
+      )}
+
+      {/* Active hold fill */}
+      {(isHolding || (holdProgress > 0 && buttonState === 'idle')) && (
+        <motion.div
+          className="absolute inset-0"
+          style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+          animate={{
+            x: `${-100 + holdProgress * 100}%`,
+          }}
+          transition={
+            isHolding
+              ? { duration: 0 }
+              : { duration: 0.3, ease: [0.25, 1, 0.5, 1] }
+          }
+        />
+      )}
+
+      {/* Confirmed state fill */}
+      {buttonState === 'confirmed' && (
+        <motion.div
+          className="absolute inset-0"
+          style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+          initial={{ opacity: 0.8 }}
+          animate={{ opacity: 1 }}
+        />
+      )}
+
+      {/* Signing spinner overlay */}
+      {buttonState === 'signing' && (
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+        >
+          <Loader2 className="w-5 h-5 text-white animate-spin" />
+        </motion.div>
+      )}
+
+      {/* Label — base layer at 25% always visible */}
+      <span
+        className="relative z-10 text-base pointer-events-none"
+        style={{
+          color:
+            isHolding || buttonState !== 'idle'
+              ? 'rgba(255,255,255,0.95)'
+              : 'rgba(255,255,255,0.25)',
+          transition: 'color 0.15s ease',
+        }}
+      >
+        {buttonState === 'confirmed' ? (
+          <Check className="w-5 h-5 inline" />
+        ) : buttonState === 'signing' ? (
+          ''
+        ) : isDesktop ? (
+          <span className="inline-flex items-center gap-2">
+            Send
+            <CornerDownLeft
+              className="w-3.5 h-3.5"
+              style={{
+                opacity: isHolding ? 0.8 : 0.4,
+                transition: 'opacity 0.15s ease',
+              }}
+            />
+          </span>
+        ) : (
+          'Send'
+        )}
+      </span>
+    </motion.button>
+  );
+}
 
 // ─── ConfirmScreen ────────────────────────────────────────────────────────────
 
 export const ConfirmScreen = () => {
   const {
-    address, ss58Address,
+    address,
+    ss58Address,
     qnsName: senderName,
     avatarUrl: senderAvatar,
     providerType,
@@ -27,27 +222,46 @@ export const ConfirmScreen = () => {
 
   const {
     phase,
-    recipientName, recipientAddress, recipientAvatar,
-    recipientAmountWei, burnAmountWei, totalRequiredWei,
-    goBackToAmount, setBroadcasting, startAnimation, setConfirmation, setError,
+    recipientName,
+    recipientAddress,
+    recipientAvatar,
+    recipientAmountWei,
+    burnAmountWei,
+    totalRequiredWei,
+    goBackToAmount,
+    setBroadcasting,
+    startAnimation,
+    setConfirmation,
+    setError,
   } = usePaymentStore();
 
-  const [buttonState,  setButtonState]  = useState<'idle' | 'signing' | 'confirmed'>('idle');
+  const [buttonState, setButtonState] = useState<'idle' | 'signing' | 'confirmed'>('idle');
   const [holdProgress, setHoldProgress] = useState(0);
-  const [isHolding,    setIsHolding]    = useState(false);
-  const [pulsing,      setPulsing]      = useState(false);
+  const [isHolding, setIsHolding] = useState(false);
+  const [pulsing, setPulsing] = useState(false);
+  const [sweepPaused, setSweepPaused] = useState(false);
 
-  const holdTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
-  const halfwayHapticRef   = useRef(false);
+  const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const halfwayHapticRef = useRef(false);
+  const isHoldingRef = useRef(false);
+  const holdProgressRef = useRef(0);
 
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
   const isBroadcasting = phase === 'broadcasting';
-  const HOLD_DURATION  = 800;
-  const TICK_INTERVAL  = 16;
+  const HOLD_DURATION = 1200;
+  const TICK_INTERVAL = 16;
 
-  // ── handleConfirm — copied verbatim ─────────────────────────────────────────
-  const handleConfirm = async () => {
+  // Keep refs in sync with state
+  useEffect(() => {
+    isHoldingRef.current = isHolding;
+  }, [isHolding]);
+  useEffect(() => {
+    holdProgressRef.current = holdProgress;
+  }, [holdProgress]);
+
+  // ── handleConfirm ─────────────────────────────────────────────────────────
+  const handleConfirm = useCallback(async () => {
     if (!recipientAddress || !address) {
       setError('Missing recipient or sender information');
       return;
@@ -116,9 +330,13 @@ export const ConfirmScreen = () => {
         goBackToAmount();
       }
     }
-  };
+  }, [
+    recipientAddress, address, providerType, recipientAmountWei,
+    totalRequiredWei, setBroadcasting, startAnimation, setConfirmation,
+    setError, goBackToAmount,
+  ]);
 
-  // ── Press-and-hold logic — wrapped in useCallback ────────────────────────
+  // ── Press-and-hold logic — refs prevent dependency thrashing ──────────────
   const startHold = useCallback(() => {
     if (buttonState !== 'idle') return;
     setIsHolding(true);
@@ -142,25 +360,30 @@ export const ConfirmScreen = () => {
         handleConfirm();
       }
     }, TICK_INTERVAL);
-  }, [buttonState]);
+  }, [buttonState, handleConfirm]);
 
   const cancelHold = useCallback(() => {
     if (holdTimerRef.current) {
       clearInterval(holdTimerRef.current);
       holdTimerRef.current = null;
     }
-    // Pulse once if released early (before completion)
-    if (isHolding && holdProgress > 0 && holdProgress < 1) {
+    // Pulse once if released early
+    if (isHoldingRef.current && holdProgressRef.current > 0 && holdProgressRef.current < 1) {
       setPulsing(true);
       setTimeout(() => setPulsing(false), 350);
+      // Pause sweep for 500ms after release
+      setSweepPaused(true);
+      setTimeout(() => setSweepPaused(false), 500);
     }
     setIsHolding(false);
     setHoldProgress(0);
     halfwayHapticRef.current = false;
-  }, [isHolding, holdProgress]);
+  }, []); // No state deps — uses refs
 
   useEffect(() => {
-    return () => { if (holdTimerRef.current) clearInterval(holdTimerRef.current); };
+    return () => {
+      if (holdTimerRef.current) clearInterval(holdTimerRef.current);
+    };
   }, []);
 
   // ── Desktop Enter hold listener ─────────────────────────────────────────────
@@ -185,7 +408,20 @@ export const ConfirmScreen = () => {
     };
   }, [isDesktop, buttonState, startHold, cancelHold]);
 
-  // ── First-visit teaching demo — copied verbatim ─────────────────────────────
+  // ── Escape key — go back ──────────────────────────────────────────────────
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && buttonState === 'idle') {
+        e.preventDefault();
+        hapticLight();
+        goBackToAmount();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [buttonState, goBackToAmount]);
+
+  // ── First-visit teaching demo ─────────────────────────────────────────────
   useEffect(() => {
     const taught = sessionStorage.getItem('qfpay-send-taught');
     if (taught || buttonState !== 'idle') return;
@@ -198,9 +434,12 @@ export const ConfirmScreen = () => {
       if (elapsed >= target) {
         clearInterval(up);
         const down = setInterval(() => {
-          setHoldProgress(prev => {
+          setHoldProgress((prev) => {
             const next = prev - 0.04;
-            if (next <= 0) { clearInterval(down); return 0; }
+            if (next <= 0) {
+              clearInterval(down);
+              return 0;
+            }
             return next;
           });
         }, TICK_INTERVAL);
@@ -210,132 +449,26 @@ export const ConfirmScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── HoldToSendButton Inline Component ───────────────────────────────────────
-
-  function HoldToSendButton({
-    holdProgress, buttonState, isHolding, pulsing,
-    onPointerDown, onPointerUp, onPointerLeave, reducedMotion,
-  }: {
-    holdProgress: number;
-    buttonState: 'idle' | 'signing' | 'confirmed';
-    isHolding: boolean;
-    pulsing: boolean;
-    onPointerDown: () => void;
-    onPointerUp: () => void;
-    onPointerLeave: () => void;
-    reducedMotion: boolean;
-  }) {
-    const isIdle = buttonState === 'idle' && !isHolding && holdProgress === 0;
-
-    return (
-      <motion.button
-        className="relative overflow-hidden select-none font-satoshi font-semibold"
-        style={{
-          width: 'clamp(260px, 80%, 320px)',
-          height: 56,
-          borderRadius: 9999,
-          border: '1px solid rgba(255,255,255,0.10)',
-          background: 'transparent',
-          cursor: buttonState === 'idle' ? 'pointer' : 'default',
-          WebkitTapHighlightColor: 'transparent',
-        }}
-        onPointerDown={buttonState === 'idle' ? onPointerDown : undefined}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerLeave}
-        whileTap={buttonState === 'idle' ? { scale: 0.97 } : undefined}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{
-          opacity: 1, y: 0,
-          scale: pulsing ? [1, 1.03, 1] : 1,
-        }}
-        transition={{ delay: 0.35, duration: 0.4, ease: EASE_OUT_EXPO }}
-      >
-        {/* Idle sweep — only when idle and not holding */}
-        {isIdle && !reducedMotion && (
-          <motion.div
-            className="absolute inset-0"
-            style={{ background: BRAND_BLUE, borderRadius: 9999 }}
-            animate={{ x: ['-100%', '0%'] }}
-            transition={{
-              x: { duration: 2.4, repeat: Infinity, ease: 'easeInOut',
-                   repeatType: 'loop', repeatDelay: 0.5 },
-            }}
-            // After reaching 0%, fade out and reset
-            // This creates the "sweep then dissolve" cycle
-          />
-        )}
-
-        {/* Active hold fill */}
-        {(isHolding || holdProgress > 0) && (
-          <motion.div
-            className="absolute inset-0"
-            style={{ background: BRAND_BLUE, borderRadius: 9999 }}
-            animate={{
-              x: `${-100 + holdProgress * 100}%`,
-            }}
-            transition={
-              isHolding
-                ? { duration: 0 } // Instant tracking during hold
-                : { duration: 0.3, ease: [0.32, 0, 0.67, 0] } // Ease-out retract
-            }
-          />
-        )}
-
-        {/* Confirmed state fill */}
-        {buttonState === 'confirmed' && (
-          <motion.div
-            className="absolute inset-0"
-            style={{ background: BRAND_BLUE, borderRadius: 9999 }}
-            initial={{ opacity: 0.8 }}
-            animate={{ opacity: 1 }}
-          />
-        )}
-
-        {/* Signing spinner overlay */}
-        {buttonState === 'signing' && (
-          <motion.div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ background: BRAND_BLUE, borderRadius: 9999 }}
-          >
-            <Loader2 className="w-5 h-5 text-white animate-spin" />
-          </motion.div>
-        )}
-
-        {/* Label */}
-        <span
-          className="relative z-10 text-base"
-          style={{
-            color: (isHolding || buttonState !== 'idle')
-              ? 'rgba(255,255,255,0.95)'
-              : 'rgba(255,255,255,0.25)',
-            transition: 'color 0.15s ease',
-          }}
-        >
-          {buttonState === 'confirmed' ? (
-            <Check className="w-5 h-5 inline" />
-          ) : buttonState === 'signing' ? '' : 'Send'}
-        </span>
-      </motion.button>
-    );
-  }
-
-  // ─── Render ─────────────────────────────────────────────────────────────────────
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center min-h-screen px-6"
+      className="flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6"
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
     >
-      {/* Back chevron — hidden during broadcasting (unchanged) */}
+      {/* Back chevron — hidden during broadcasting */}
       <AnimatePresence>
         {!isBroadcasting && (
           <motion.button
             className="fixed top-5 left-5 z-50 transition-opacity hover:opacity-60 focus-ring"
             style={{ fontSize: '1.75rem', lineHeight: 1, color: 'rgba(255,255,255,0.25)' }}
-            onClick={() => { hapticLight(); goBackToAmount(); }}
+            onClick={() => {
+              hapticLight();
+              goBackToAmount();
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -355,14 +488,20 @@ export const ConfirmScreen = () => {
             src={recipientAvatar}
             alt={recipientName || 'Recipient'}
             className="rounded-full object-cover"
-            style={{ width: 56, height: 56, border: '1.5px solid rgba(255,255,255,0.15)' }}
+            style={{
+              width: 56,
+              height: 56,
+              border: '1.5px solid rgba(255,255,255,0.15)',
+            }}
           />
         ) : (
           <div
             className="rounded-full flex items-center justify-center"
             style={{
-              width: 56, height: 56,
-              background: 'linear-gradient(135deg, rgba(0,64,255,0.25), rgba(0,64,255,0.08))',
+              width: 56,
+              height: 56,
+              background:
+                'linear-gradient(135deg, rgba(0,64,255,0.25), rgba(0,64,255,0.08))',
               border: '1.5px solid rgba(255,255,255,0.12)',
             }}
           >
@@ -399,7 +538,7 @@ export const ConfirmScreen = () => {
         transition={{ delay: 0.15, duration: 0.4, ease: EASE_OUT_EXPO }}
       >
         <span
-          className="font-clash font-bold"
+          className="font-clash font-bold selectable"
           style={{
             fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
             letterSpacing: '-0.02em',
@@ -439,25 +578,32 @@ export const ConfirmScreen = () => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.4 }}
       >
-        <span className="font-satoshi text-[13px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <span
+          className="font-satoshi text-[13px] selectable"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
+        >
           {formatQF(totalRequiredWei)} QF leaves your wallet
         </span>
-        <span className="font-satoshi text-[13px]" style={{ color: `${BURN_CRIMSON}99` }}>
+        <span
+          className="font-satoshi text-[13px]"
+          style={{ color: `${BURN_CRIMSON}99` }}
+        >
           🔥 {formatQF(burnAmountWei)} QF burns
         </span>
       </motion.div>
 
-      {/* HoldToSendButton — contains all hold logic + idle sweep */}
-      {/* Wire startHold, cancelHold, holdProgress, buttonState, isHolding, pulsing into this */}
+      {/* HoldToSendButton */}
       <HoldToSendButton
         holdProgress={holdProgress}
         buttonState={buttonState}
         isHolding={isHolding}
         pulsing={pulsing}
+        sweepPaused={sweepPaused}
         onPointerDown={startHold}
         onPointerUp={cancelHold}
         onPointerLeave={cancelHold}
         reducedMotion={reducedMotion}
+        isDesktop={isDesktop}
       />
     </motion.div>
   );

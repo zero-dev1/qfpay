@@ -139,7 +139,7 @@ export function ConnectedPill() {
 
         {/* Balance — inline in pill */}
         <span
-          className="font-mono text-xs whitespace-nowrap"
+          className="font-mono text-xs whitespace-nowrap selectable"
           style={{ color: `${BRAND_BLUE}cc` }}
         >
           {displayBalance}
@@ -174,44 +174,41 @@ export function ConnectedPill() {
             transition={{ type: 'spring', damping: 24, stiffness: 320, duration: 0.15 }}
           >
             {/* Balance visibility toggle */}
-            <button
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-satoshi text-sm transition-colors"
+            <motion.button
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-satoshi text-sm"
               style={{ color: 'rgba(255,255,255,0.60)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               onClick={() => { hapticLight(); setBalanceVisible(v => !v); }}
+              whileTap={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
             >
               <span>{balanceVisible ? 'Hide balance' : 'Show balance'}</span>
               {balanceVisible
                 ? <EyeOff className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.35)' }} />
                 : <Eye className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.35)' }} />
               }
-            </button>
+            </motion.button>
 
             {/* Divider */}
             <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 8px' }} />
 
             {/* Copy address */}
-            <button
-              className="w-full text-left px-3 py-2.5 rounded-lg font-satoshi text-sm transition-colors"
+            <motion.button
+              className="w-full text-left px-3 py-2.5 rounded-lg font-satoshi text-sm"
               style={{ color: 'rgba(255,255,255,0.60)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               onClick={handleCopy}
+              whileTap={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
             >
               {copied ? 'Copied ✓' : 'Copy address'}
-            </button>
+            </motion.button>
 
             {/* Disconnect */}
-            <button
-              className="w-full text-left px-3 py-2.5 rounded-lg font-satoshi text-sm transition-colors"
+            <motion.button
+              className="w-full text-left px-3 py-2.5 rounded-lg font-satoshi text-sm"
               style={{ color: 'rgba(255,255,255,0.45)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               onClick={() => { hapticMedium(); disconnect(); }}
+              whileTap={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
             >
               Disconnect
-            </button>
+            </motion.button>
 
             {/* Divider */}
             <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 8px' }} />

@@ -159,8 +159,8 @@ const ToastItem = ({
         background: bg,
         border,
         borderRadius: 14,
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
         padding: '11px 14px',
         boxShadow: '0 4px 24px rgba(0,0,0,0.30)',
       }}

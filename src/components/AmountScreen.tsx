@@ -134,6 +134,19 @@ export const AmountScreen = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isDesktop, handleContinue]);
 
+  // ─── Escape key — go back to RecipientScreen ──────────────────────────────
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        hapticLight();
+        goBackToRecipient();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [goBackToRecipient]);
+
   // ─── Derived display values ─────────────────────────────────────────────────
   const displayRecipientLabel = recipientName
     ? `${recipientName}.qf` 
@@ -146,7 +159,7 @@ export const AmountScreen = () => {
 
   return (
     <motion.div
-      className="relative min-h-[100svh] px-6"
+      className="relative h-[100svh] overflow-hidden px-6"
       style={{ paddingBottom: isDesktop ? 0 : KEYBOARD_HEIGHT + 24 }}
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
@@ -246,7 +259,7 @@ export const AmountScreen = () => {
               />
             ) : (
               <span
-                className="font-clash font-bold"
+                className="font-clash font-bold selectable"
                 style={{
                   fontSize: 'clamp(2.5rem, 8vw, 6rem)',
                   letterSpacing: '-0.02em',
@@ -363,7 +376,7 @@ export const AmountScreen = () => {
         <AnimatePresence>
           {insufficientBalance && (
             <motion.p
-              className="font-satoshi mt-2 text-center"
+              className="font-satoshi mt-2 text-center selectable"
               style={{ fontSize: 13, color: 'rgba(245,158,11,0.85)' }}
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}

@@ -81,7 +81,7 @@ function App() {
   return (
     <LayoutGroup>
     <motion.div
-      className="min-h-screen w-full relative overflow-hidden"
+      className="h-[100svh] w-full relative overflow-hidden"
       animate={{ backgroundColor: getBackgroundColor() }}
       transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
     >

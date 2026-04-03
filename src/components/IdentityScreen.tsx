@@ -95,7 +95,7 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
   if (address && !qnsName) {
     return (
       <motion.div
-        className="flex flex-col items-center justify-center min-h-screen w-full"
+        className="flex flex-col items-center justify-center h-[100svh] overflow-hidden w-full"
         style={{ background: BG_PRIMARY }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -117,7 +117,7 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
   if (!hasQNS) {
     return (
       <motion.div
-        className="flex flex-col items-center justify-center min-h-screen px-6 text-center"
+        className="flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -182,7 +182,7 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center min-h-screen px-6 select-none"
+      className="flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6 select-none"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

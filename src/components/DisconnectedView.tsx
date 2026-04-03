@@ -19,7 +19,7 @@ export function DisconnectedView() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="min-h-[100svh] flex flex-col items-center justify-center bg-[#060A14] px-6 overflow-hidden"
+      className="h-[100svh] flex flex-col items-center justify-center bg-[#060A14] px-6 overflow-hidden"
       style={{ paddingTop: 'clamp(1.5rem, 4vh, 3rem)' }}
     >
       {/* Headline — completely static */}
@@ -65,10 +65,6 @@ export function DisconnectedView() {
           className="relative bg-[#0040FF] hover:bg-[#0035DD] text-white font-clash font-bold text-lg px-14 py-4 rounded-full transition-colors duration-200 focus-ring cursor-pointer"
           onClick={openWalletModal}
           whileTap={{ scale: 0.97 }}
-          whileHover={{
-            y: -2,
-            boxShadow: '0 0 40px rgba(0,64,255,0.3), 0 0 80px rgba(0,64,255,0.1)',
-          }}
           style={{
             boxShadow: '0 0 30px rgba(0,64,255,0.15)',
           }}

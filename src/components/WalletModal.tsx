@@ -236,18 +236,13 @@ export const WalletModal = () => {
                     borderRadius: 14,
                     background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.08)',
-                    cursor: connecting ? 'not-allowed' : 'pointer',
+                    cursor: connecting ? 'not-allowed' : 'default',
                   }}
                   onClick={() => handleWalletSelect(wallet.type)}
                   disabled={connecting}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: connecting ? 0.45 : 1, y: 0 }}
                   transition={{ delay: i * 0.06, duration: 0.3, ease: EASE_OUT_EXPO }}
-                  whileHover={!connecting ? {
-                    backgroundColor: 'rgba(255,255,255,0.07)',
-                    borderColor: `rgba(0,64,255,0.25)`,
-                    y: -1,
-                  } : undefined}
                   whileTap={!connecting ? { scale: 0.99 } : undefined}
                 >
                   <div className="flex-shrink-0">{wallet.icon}</div>

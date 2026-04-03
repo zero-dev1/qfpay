@@ -257,7 +257,7 @@ export const RecipientScreen = () => {
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center min-h-screen px-6 cursor-text"
+      className="flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6"
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -280,7 +280,7 @@ export const RecipientScreen = () => {
             >
               <motion.div
                 layoutId="recipient-avatar"
-                className="relative mb-3 cursor-pointer"
+                className="relative mb-3"
                 initial={{ scale: 0.5, filter: 'blur(12px)', opacity: 0 }}
                 animate={{ scale: 1, filter: 'blur(0px)', opacity: 1 }}
                 transition={{ ...EASE_SPRING }}
@@ -325,7 +325,7 @@ export const RecipientScreen = () => {
               </motion.div>
 
               <motion.p
-                className="font-satoshi font-medium text-sm"
+                className="font-satoshi font-medium text-sm selectable"
                 style={{ color: 'rgba(255,255,255,0.70)' }}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -362,7 +362,7 @@ export const RecipientScreen = () => {
           />
 
           <div
-            className="flex items-center justify-center w-full overflow-hidden"
+            className="flex items-center justify-center w-full overflow-hidden cursor-text"
             style={{ height: 80 }}
           >
             {input ? (
@@ -466,7 +466,7 @@ export const RecipientScreen = () => {
           <AnimatePresence>
             {error && (
               <motion.p
-                className="font-satoshi mt-2 text-center"
+                className="font-satoshi mt-2 text-center selectable"
                 style={{ fontSize: 13, color: 'rgba(245,158,11,0.85)' }}
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}

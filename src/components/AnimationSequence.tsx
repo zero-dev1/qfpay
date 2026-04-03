@@ -187,7 +187,7 @@ export const AnimationSequence = () => {
   if (reducedMotion && phase === 'success') {
     return (
       <div
-        className="flex flex-col items-center justify-center min-h-screen px-6"
+        className="flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6"
         style={{ background: BRAND_BLUE }}
       >
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="mb-6">
@@ -211,7 +211,7 @@ export const AnimationSequence = () => {
 
   return (
     <motion.div
-      className="relative flex flex-col items-center justify-center min-h-screen px-6 overflow-hidden"
+      className="relative flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6"
       animate={{ backgroundColor: bgColor }}
       transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
     >
@@ -422,7 +422,7 @@ export const AnimationSequence = () => {
 
             {/* Receipt card — slides up at 1400ms, spring */}
             <motion.div
-              className="relative z-10 w-full max-w-sm mx-auto mb-8"
+              className="relative z-10 w-full max-w-sm mx-auto mb-8 selectable"
               style={{
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.10)',
