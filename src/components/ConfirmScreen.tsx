@@ -1,97 +1,19 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Check } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
-import { formatQF } from '../utils/qfpay';
+import { formatQF, truncateAddress } from '../utils/qfpay';
 import { writeContract } from '../utils/contractCall';
 import { QFPAY_ROUTER_ADDRESS, ROUTER_ABI } from '../config/contracts';
 import { isRetryableError, RETRY_MESSAGE_SHORT } from '../utils/errorHelpers';
 import { showToast } from './Toast';
 import { hapticLight, hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO } from '../lib/animations';
-import { BG_SURFACE, BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
+import { BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 
-// ─── Pill helper ─────────────────────────────────────────────────────────────
-
-function ReviewPill({
-  avatarUrl, name, fallbackAddress, amountLabel, verb,
-}: {
-  avatarUrl: string | null;
-  name: string | null;
-  fallbackAddress: string | null;
-  amountLabel: string;
-  verb: string;
-}) {
-  const displayName = name
-    || (fallbackAddress
-      ? fallbackAddress.slice(0, 8) + '...' + fallbackAddress.slice(-4)
-      : '?');
-  const initial = name
-    ? name[0].toUpperCase()
-    : fallbackAddress
-      ? fallbackAddress.slice(2, 4).toUpperCase()
-      : '?';
-
-  return (
-    <div
-      className="inline-flex items-center gap-3"
-      style={{
-        background: BG_SURFACE,
-        border: '1px solid rgba(255,255,255,0.10)',
-        borderRadius: 9999,
-        padding: '10px 20px 10px 10px',
-      }}
-    >
-      {/* Avatar — 40px */}
-      {avatarUrl ? (
-        <img
-          src={avatarUrl}
-          alt={displayName}
-          className="rounded-full object-cover flex-shrink-0"
-          style={{ width: 40, height: 40, border: '1px solid rgba(255,255,255,0.15)' }}
-        />
-      ) : (
-        <div
-          className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{
-            width: 40, height: 40,
-            background: 'linear-gradient(135deg, rgba(0,64,255,0.25), rgba(0,64,255,0.08))',
-            border: '1px solid rgba(255,255,255,0.12)',
-          }}
-        >
-          <span className="font-clash font-bold text-sm text-white">{initial}</span>
-        </div>
-      )}
-
-      {/* name.qf */}
-      <span className="font-satoshi font-medium text-sm flex-shrink-0" style={{ color: 'rgba(255,255,255,0.90)' }}>
-        {name
-          ? <>{name}<span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span></>
-          : displayName}
-      </span>
-
-      {/* Square separator dot */}
-      <div style={{
-        width: 4, height: 4, borderRadius: 1,
-        background: 'rgba(255,255,255,0.25)',
-        flexShrink: 0,
-      }} />
-
-      {/* Amount · verb — JetBrains Mono */}
-      <span className="font-mono text-sm" style={{ color: 'rgba(255,255,255,0.70)' }}>
-        {amountLabel}{' '}
-        <span style={{ color: 'rgba(255,255,255,0.30)' }}>{verb}</span>
-      </span>
-    </div>
-  );
-}
-
-const Divider = () => (
-  <div className="flex justify-center my-3">
-    <div style={{ width: 2, height: 32, borderRadius: 1, background: 'rgba(255,255,255,0.08)' }} />
-  </div>
-);
 
 // ─── ConfirmScreen ────────────────────────────────────────────────────────────
 
@@ -118,6 +40,8 @@ export const ConfirmScreen = () => {
   const holdTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const halfwayHapticRef   = useRef(false);
 
+  const reducedMotion = useReducedMotion();
+  const isDesktop = useIsDesktop();
   const isBroadcasting = phase === 'broadcasting';
   const HOLD_DURATION  = 800;
   const TICK_INTERVAL  = 16;
@@ -194,8 +118,8 @@ export const ConfirmScreen = () => {
     }
   };
 
-  // ── Press-and-hold logic — copied verbatim ──────────────────────────────────
-  const startHold = () => {
+  // ── Press-and-hold logic — wrapped in useCallback ────────────────────────
+  const startHold = useCallback(() => {
     if (buttonState !== 'idle') return;
     setIsHolding(true);
     halfwayHapticRef.current = false;
@@ -218,9 +142,9 @@ export const ConfirmScreen = () => {
         handleConfirm();
       }
     }, TICK_INTERVAL);
-  };
+  }, [buttonState]);
 
-  const cancelHold = () => {
+  const cancelHold = useCallback(() => {
     if (holdTimerRef.current) {
       clearInterval(holdTimerRef.current);
       holdTimerRef.current = null;
@@ -233,11 +157,33 @@ export const ConfirmScreen = () => {
     setIsHolding(false);
     setHoldProgress(0);
     halfwayHapticRef.current = false;
-  };
+  }, [isHolding, holdProgress]);
 
   useEffect(() => {
     return () => { if (holdTimerRef.current) clearInterval(holdTimerRef.current); };
   }, []);
+
+  // ── Desktop Enter hold listener ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!isDesktop) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && buttonState === 'idle' && !e.repeat) {
+        e.preventDefault();
+        startHold();
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        cancelHold();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [isDesktop, buttonState, startHold, cancelHold]);
 
   // ── First-visit teaching demo — copied verbatim ─────────────────────────────
   useEffect(() => {
@@ -264,17 +210,126 @@ export const ConfirmScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Render ───────────────────────────────────────────────────────────────────
+  // ─── HoldToSendButton Inline Component ───────────────────────────────────────
+
+  function HoldToSendButton({
+    holdProgress, buttonState, isHolding, pulsing,
+    onPointerDown, onPointerUp, onPointerLeave, reducedMotion,
+  }: {
+    holdProgress: number;
+    buttonState: 'idle' | 'signing' | 'confirmed';
+    isHolding: boolean;
+    pulsing: boolean;
+    onPointerDown: () => void;
+    onPointerUp: () => void;
+    onPointerLeave: () => void;
+    reducedMotion: boolean;
+  }) {
+    const isIdle = buttonState === 'idle' && !isHolding && holdProgress === 0;
+
+    return (
+      <motion.button
+        className="relative overflow-hidden select-none font-satoshi font-semibold"
+        style={{
+          width: 'clamp(260px, 80%, 320px)',
+          height: 56,
+          borderRadius: 9999,
+          border: '1px solid rgba(255,255,255,0.10)',
+          background: 'transparent',
+          cursor: buttonState === 'idle' ? 'pointer' : 'default',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+        onPointerDown={buttonState === 'idle' ? onPointerDown : undefined}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        whileTap={buttonState === 'idle' ? { scale: 0.97 } : undefined}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{
+          opacity: 1, y: 0,
+          scale: pulsing ? [1, 1.03, 1] : 1,
+        }}
+        transition={{ delay: 0.35, duration: 0.4, ease: EASE_OUT_EXPO }}
+      >
+        {/* Idle sweep — only when idle and not holding */}
+        {isIdle && !reducedMotion && (
+          <motion.div
+            className="absolute inset-0"
+            style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+            animate={{ x: ['-100%', '0%'] }}
+            transition={{
+              x: { duration: 2.4, repeat: Infinity, ease: 'easeInOut',
+                   repeatType: 'loop', repeatDelay: 0.5 },
+            }}
+            // After reaching 0%, fade out and reset
+            // This creates the "sweep then dissolve" cycle
+          />
+        )}
+
+        {/* Active hold fill */}
+        {(isHolding || holdProgress > 0) && (
+          <motion.div
+            className="absolute inset-0"
+            style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+            animate={{
+              x: `${-100 + holdProgress * 100}%`,
+            }}
+            transition={
+              isHolding
+                ? { duration: 0 } // Instant tracking during hold
+                : { duration: 0.3, ease: [0.32, 0, 0.67, 0] } // Ease-out retract
+            }
+          />
+        )}
+
+        {/* Confirmed state fill */}
+        {buttonState === 'confirmed' && (
+          <motion.div
+            className="absolute inset-0"
+            style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+            initial={{ opacity: 0.8 }}
+            animate={{ opacity: 1 }}
+          />
+        )}
+
+        {/* Signing spinner overlay */}
+        {buttonState === 'signing' && (
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ background: BRAND_BLUE, borderRadius: 9999 }}
+          >
+            <Loader2 className="w-5 h-5 text-white animate-spin" />
+          </motion.div>
+        )}
+
+        {/* Label */}
+        <span
+          className="relative z-10 text-base"
+          style={{
+            color: (isHolding || buttonState !== 'idle')
+              ? 'rgba(255,255,255,0.95)'
+              : 'rgba(255,255,255,0.25)',
+            transition: 'color 0.15s ease',
+          }}
+        >
+          {buttonState === 'confirmed' ? (
+            <Check className="w-5 h-5 inline" />
+          ) : buttonState === 'signing' ? '' : 'Send'}
+        </span>
+      </motion.button>
+    );
+  }
+
+  // ─── Render ─────────────────────────────────────────────────────────────────────
 
   return (
     <motion.div
       className="flex flex-col items-center justify-center min-h-screen px-6"
       initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1  }}
-      exit={   { opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
     >
-      {/* ── Back chevron — hidden during broadcasting ── */}
+      {/* Back chevron — hidden during broadcasting (unchanged) */}
       <AnimatePresence>
         {!isBroadcasting && (
           <motion.button
@@ -283,7 +338,7 @@ export const ConfirmScreen = () => {
             onClick={() => { hapticLight(); goBackToAmount(); }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{    opacity: 0 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             whileTap={{ scale: 0.9 }}
             aria-label="Back"
@@ -293,210 +348,117 @@ export const ConfirmScreen = () => {
         )}
       </AnimatePresence>
 
-      <div className="w-full">
-
-        {/* ── Sender pill — delay 0ms ── */}
-        <motion.div
-          className="flex justify-center"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0, duration: 0.35, ease: EASE_OUT_EXPO }}
-        >
-          <ReviewPill
-            avatarUrl={senderAvatar}
-            name={senderName}
-            fallbackAddress={address}
-            amountLabel={`${formatQF(totalRequiredWei)} QF`}
-            verb="leaving"
+      {/* Recipient avatar — 56px, shared layoutId */}
+      <motion.div layoutId="recipient-avatar" className="mb-3">
+        {recipientAvatar ? (
+          <img
+            src={recipientAvatar}
+            alt={recipientName || 'Recipient'}
+            className="rounded-full object-cover"
+            style={{ width: 56, height: 56, border: '1.5px solid rgba(255,255,255,0.15)' }}
           />
-        </motion.div>
-
-        {/* ── Connector 1 — delay 100ms ── */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.10, duration: 0.3 }}
-        >
-          <Divider />
-        </motion.div>
-
-        {/* ── Burn pill — delay 150ms ── */}
-        <motion.div
-          className="flex justify-center"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.35, ease: EASE_OUT_EXPO }}
-        >
+        ) : (
           <div
-            className="inline-flex items-center gap-2"
+            className="rounded-full flex items-center justify-center"
             style={{
-              background: 'rgba(185,28,28,0.08)',
-              border: '1px solid rgba(185,28,28,0.25)',
-              borderRadius: 9999,
-              padding: '10px 20px',
+              width: 56, height: 56,
+              background: 'linear-gradient(135deg, rgba(0,64,255,0.25), rgba(0,64,255,0.08))',
+              border: '1.5px solid rgba(255,255,255,0.12)',
             }}
           >
-            <span
-              className="font-satoshi font-medium text-base"
-              style={{ color: `${BURN_CRIMSON}cc` }}
-            >
-              🔥 {formatQF(burnAmountWei)} QF burns{' '}
-              <span style={{ color: `${BURN_CRIMSON}cc` }}>forever</span>
+            <span className="font-clash font-bold text-lg text-white">
+              {(recipientName || '?')[0].toUpperCase()}
             </span>
           </div>
-        </motion.div>
+        )}
+      </motion.div>
 
-        {/* ── Connector 2 — delay 200ms ── */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.20, duration: 0.3 }}
+      {/* Recipient name.qf */}
+      <motion.p
+        className="font-satoshi font-medium text-sm mb-6"
+        style={{ color: 'rgba(255,255,255,0.70)' }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.35, ease: EASE_OUT_EXPO }}
+      >
+        {recipientName ? (
+          <>
+            <span>{recipientName}</span>
+            <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
+          </>
+        ) : (
+          truncateAddress(recipientAddress || '')
+        )}
+      </motion.p>
+
+      {/* Hero amount */}
+      <motion.div
+        className="flex items-baseline justify-center gap-2 mb-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.4, ease: EASE_OUT_EXPO }}
+      >
+        <span
+          className="font-clash font-bold"
+          style={{
+            fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
+            letterSpacing: '-0.02em',
+            color: 'rgba(255,255,255,0.95)',
+          }}
         >
-          <Divider />
-        </motion.div>
-
-        {/* ── Recipient pill — delay 250ms ── */}
-        <motion.div
-          className="flex justify-center"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.35, ease: EASE_OUT_EXPO }}
+          {formatQF(recipientAmountWei)}
+        </span>
+        <span
+          className="font-clash font-bold"
+          style={{
+            fontSize: 'clamp(1.25rem, 3vw, 2rem)',
+            color: `${BRAND_BLUE}cc`,
+          }}
         >
-          <ReviewPill
-            avatarUrl={recipientAvatar}
-            name={recipientName}
-            fallbackAddress={recipientAddress}
-            amountLabel={`${formatQF(recipientAmountWei)} QF`}
-            verb="arriving"
-          />
-        </motion.div>
+          QF
+        </span>
+      </motion.div>
 
-        {/* ── Send button — delay 400ms ── */}
-        <motion.div
-          className="flex justify-center mt-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0  }}
-          transition={{ delay: 0.40, duration: 0.4, ease: EASE_OUT_EXPO }}
-        >
-          {/* Heartbeat pulse — 2s loop, pauses while holding or signing */}
-          <motion.div
-            animate={
-              buttonState === 'idle' && !isHolding
-                ? { scale: [1, 1.02, 1] }
-                : { scale: 1 }
-            }
-            transition={{
-              duration: 2,
-              repeat: buttonState === 'idle' && !isHolding ? Infinity : 0,
-              ease: 'easeInOut',
-            }}
-          >
-            {/* Cancel pulse wrapper — fires once on early release */}
-            <motion.div
-              animate={pulsing ? { scale: [1, 1.04, 0.98, 1] } : { scale: 1 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-            >
-              {/* Outer wrapper — no overflow:hidden so shimmer border is visible */}
-              <motion.div
-                className="relative"
-                style={{
-                  width: 'clamp(200px, 60vw, 320px)',
-                  height: 56,
-                  borderRadius: 100,
-                  cursor: buttonState === 'idle' ? 'pointer' : 'default',
-                  userSelect: 'none',
-                }}
-                onPointerDown={startHold}
-                onPointerUp={cancelHold}
-                onPointerLeave={cancelHold}
-                whileTap={buttonState === 'idle' ? { scale: 0.98 } : undefined}
-              >
-                {/* Shimmer border — outside overflow:hidden, so the 1px ring shows */}
-                <div
-                  className="absolute -inset-[1px] pointer-events-none"
-                  style={{ borderRadius: 100, overflow: 'hidden' }}
-                >
-                  <div
-                    className="w-full h-full animate-shimmer-rotate"
-                    style={{
-                      background: buttonState !== 'idle'
-                        ? 'transparent'
-                        : 'conic-gradient(from var(--shimmer-angle, 0deg), rgba(0,64,255,0.05) 0%, rgba(120,170,255,0.45) 10%, rgba(0,64,255,0.05) 20%, rgba(0,64,255,0.05) 100%)',
-                      animationDuration: '4s',
-                    }}
-                  />
-                </div>
+      {/* Sapphire underline */}
+      <motion.div
+        style={{
+          width: 'clamp(200px, 60%, 360px)',
+          height: 2,
+          borderRadius: 1,
+          backgroundColor: BRAND_BLUE,
+        }}
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ delay: 0.2, duration: 0.4, ease: EASE_OUT_EXPO }}
+      />
 
-                {/* Button surface — overflow:hidden clips the fill progress */}
-                <div
-                  className="absolute inset-0 overflow-hidden"
-                  style={{ borderRadius: 100, background: BRAND_BLUE }}
-                >
-                  {/* Fill progress — brightens from left */}
-                  <motion.div
-                    className="absolute inset-0"
-                    style={{
-                      background: '#2060FF',
-                      transformOrigin: 'left center',
-                      borderRadius: 100,
-                    }}
-                    animate={{ scaleX: holdProgress }}
-                    transition={{ duration: 0.05 }}
-                  />
+      {/* Footnotes */}
+      <motion.div
+        className="flex flex-col items-center gap-1 mt-4 mb-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.4 }}
+      >
+        <span className="font-satoshi text-[13px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          {formatQF(totalRequiredWei)} QF leaves your wallet
+        </span>
+        <span className="font-satoshi text-[13px]" style={{ color: `${BURN_CRIMSON}99` }}>
+          🔥 {formatQF(burnAmountWei)} QF burns
+        </span>
+      </motion.div>
 
-                  {/* Label — idle / signing / confirmed */}
-                  <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                    <AnimatePresence mode="wait">
-                      {buttonState === 'idle' && (
-                        <motion.span
-                          key="idle"
-                          className="font-clash font-bold text-white"
-                          style={{ fontSize: 18, letterSpacing: '-0.02em' }}
-                          initial={{ opacity: 0, y:  4 }}
-                          animate={{ opacity: 1, y:  0 }}
-                          exit={   { opacity: 0, y: -4 }}
-                          transition={{ duration: 0.15 }}
-                        >
-                          Send
-                        </motion.span>
-                      )}
-                      {buttonState === 'signing' && (
-                        <motion.span
-                          key="signing"
-                          className="flex items-center gap-2 font-satoshi font-medium text-white"
-                          style={{ fontSize: 15 }}
-                          initial={{ opacity: 0, y:  4 }}
-                          animate={{ opacity: 1, y:  0 }}
-                          exit={   { opacity: 0, y: -4 }}
-                          transition={{ duration: 0.15 }}
-                        >
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Signing…
-                        </motion.span>
-                      )}
-                      {buttonState === 'confirmed' && (
-                        <motion.span
-                          key="confirmed"
-                          className="flex items-center gap-2 font-satoshi font-medium text-white"
-                          style={{ fontSize: 15 }}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={   { opacity: 0 }}
-                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                        >
-                          <Check className="w-4 h-4" />
-                          Sent
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          </motion.div>
-        </motion.div>
-
-      </div>
+      {/* HoldToSendButton — contains all hold logic + idle sweep */}
+      {/* Wire startHold, cancelHold, holdProgress, buttonState, isHolding, pulsing into this */}
+      <HoldToSendButton
+        holdProgress={holdProgress}
+        buttonState={buttonState}
+        isHolding={isHolding}
+        pulsing={pulsing}
+        onPointerDown={startHold}
+        onPointerUp={cancelHold}
+        onPointerLeave={cancelHold}
+        reducedMotion={reducedMotion}
+      />
     </motion.div>
   );
 };

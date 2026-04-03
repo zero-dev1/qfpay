@@ -10,6 +10,7 @@ import { hapticLight, hapticMedium } from '../utils/haptics';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
 import { BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
 import { useIsDesktop } from '../hooks/useIsDesktop';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 // Keyboard height constant for bottom padding on mobile
 const KEYBOARD_HEIGHT = 272;
@@ -61,7 +62,12 @@ export const AmountScreen = () => {
     hapticLight();
     if (key === 'MAX') {
       if (maxSendableWei <= 0n) return;
-      const raw = (Number(maxSendableWei) / 1e18).toFixed(6).replace(/\.?0+$/, '');
+      // Format in bigint-safe way: divide by 1e12 first (6 decimal places of precision)
+      // then format as string to avoid float imprecision
+      const wholePart = maxSendableWei / 1000000000000000000n;
+      const fracPart = (maxSendableWei % 1000000000000000000n) / 1000000000000n; // 6 decimals
+      const fracStr = fracPart.toString().padStart(6, '0');
+      const raw = `${wholePart}.${fracStr}`.replace(/\.?0+$/, '');
       setAmountInput(raw);
       return;
     }
@@ -77,6 +83,24 @@ export const AmountScreen = () => {
     const next = amountInput === '0' ? key : amountInput + key;
     if (isValidAmountInput(next)) setAmountInput(next);
   }, [amountInput, maxSendableWei]);
+
+  // ─── Desktop M hotkey for MAX ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isDesktop) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'm' || e.key === 'M') && maxSendableWei > 0n) {
+        // Only trigger if user isn't typing in the input
+        // The input is always focused on desktop, so check if they're
+        // holding Shift (Shift+M as a deliberate hotkey)
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleKey('MAX');
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isDesktop, maxSendableWei, handleKey]);
 
   const startLongPress = () => {
     longPressRef.current = setTimeout(() => {
@@ -264,8 +288,15 @@ export const AmountScreen = () => {
                 onClick={() => handleKey('MAX')}
                 whileTap={{ scale: 0.92 }}
                 aria-label="Set maximum amount"
+                title={isDesktop ? "Press Shift+M for MAX" : "Set maximum amount"}
               >
-                MAX
+                {isDesktop ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <span style={{ fontSize: '0.5rem', opacity: 0.7 }}>⇧</span>M
+                  </span>
+                ) : (
+                  'MAX'
+                )}
               </motion.button>
             )}
           </div>
