@@ -1,21 +1,51 @@
-import { motion, AnimatePresence } from 'framer-motion';
+// src/components/AnimationSequence.tsx
+// Three-act payment ceremony: Burn → Send → Success
+// Uses useAnimate for sequential orchestration — no setTimeout chains.
+
+import { useAnimate, motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { usePaymentStore } from '../stores/paymentStore';
 import { useWalletStore } from '../stores/walletStore';
 import { formatQF } from '../utils/qfpay';
-import { hapticBurn, hapticImpact, hapticSuccess } from '../utils/haptics';
+import { hapticBurn, hapticSuccess } from '../utils/haptics';
 import { playBurnSound, playSendSound, playSuccessSound } from '../utils/sounds';
-import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
-import { BRAND_BLUE, BURN_CRIMSON, SUCCESS_GREEN } from '../lib/colors';
+import { EASE_OUT_EXPO } from '../lib/animations';
+import { BRAND_BLUE, BURN_CRIMSON, SUCCESS_GREEN, BG_PRIMARY } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-import { NamePill } from './NamePill';
 import { AvatarFallback } from './AvatarFallback';
 import { ShimmerButton } from './hero/ShimmerButton';
+import { Share2 } from 'lucide-react';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const BURN_BG = '#0F0608';
+const SEND_BG = BG_PRIMARY;
+const SUCCESS_BG = BRAND_BLUE;
+const SETTLED_BG = '#080D1A';
+
+// Timing (ms) — let each act breathe
+const BURN_FADE_IN = 400;
+const BURN_AMOUNT_IN = 500;
+const BURN_HOLD = 800;
+const BURN_DISSOLVE = 500;
+const EMBER_DRIFT = 600;
+
+const SEND_FADE_IN = 400;
+const SEND_AMOUNT_IN = 500;
+const SEND_HOLD = 800;
+const SEND_DISSOLVE = 400;
+
+const SUCCESS_CHECKMARK_DRAW = 400;
+const SUCCESS_CHECKMARK_HOLD = 600;
+const SUCCESS_CHECKMARK_LIFT = 500;
+const SUCCESS_RECEIPT_DELAY = 200;
 
 // ─── AnimationSequence ────────────────────────────────────────────────────────
 
 export const AnimationSequence = () => {
+  const [scope, animate] = useAnimate();
+  const reducedMotion = useReducedMotion();
+
   const {
     phase,
     recipientAmountWei,
@@ -30,145 +60,172 @@ export const AnimationSequence = () => {
   } = usePaymentStore();
 
   const { qnsName: senderName, avatarUrl: senderAvatar } = useWalletStore();
-  const reducedMotion = useReducedMotion();
 
-  // ── Derived ──
-  const departureAmountWei = recipientAmountWei + burnAmountWei;
-
+  // ── Derived values ──
   const displayRecipient = recipientName
-    ? `${recipientName}.qf`
+    ? `${recipientName}.qf` 
     : recipientAddress
       ? recipientAddress.slice(0, 8) + '...' + recipientAddress.slice(-4)
       : '?';
 
+  const [receiptTime, setReceiptTime] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const sequenceRunRef = useRef<{ burn: boolean; sending: boolean; success: boolean }>({
+    burn: false, sending: false, success: false,
+  });
 
-  // ── Screen 5 animation state ──
-  const [bgColor,           setBgColor]           = useState('#060A14');
-  const [senderDimmed,      setSenderDimmed]      = useState(false);
-  const [recipientArriving, setRecipientArriving] = useState(false);
-  const [showCheckmark,     setShowCheckmark]     = useState(false);
-  const [pillsVisible,      setPillsVisible]      = useState(true);
-  const [trailVisible,      setTrailVisible]      = useState(false);
-  const [displayAmount,     setDisplayAmount]     = useState(
-    Number(departureAmountWei) / 1e18
-  );
-  const [amountColor, setAmountColor]   = useState<string>('rgba(255,255,255,0.95)');
-  const [receiptTime, setReceiptTime]   = useState('');
-
-  const countdownAFRef = useRef<number | null>(null);
-
-  // ── BURN PHASE ─────────────────────────────────────────────────────────────
+  // ── BURN PHASE ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'burn') return;
+    if (phase !== 'burn' || sequenceRunRef.current.burn) return;
+    sequenceRunRef.current.burn = true;
 
     if (reducedMotion) {
-      setTimeout(advanceToSending, 400);
+      setTimeout(advanceToSending, 300);
       return;
     }
 
-    const startValue = Number(departureAmountWei) / 1e18;
-    const endValue   = Number(recipientAmountWei)  / 1e18;
-    const difference = startValue - endValue;
+    const run = async () => {
+      try {
+        // Fade in background to crimson
+        await animate(scope.current, { backgroundColor: BURN_BG }, { duration: BURN_FADE_IN / 1000, ease: EASE_OUT_EXPO as any });
 
-    const timers: ReturnType<typeof setTimeout>[] = [
+        // Scale in burn amount
+        await animate('[data-id="burn-amount"]', {
+          opacity: 1,
+          scale: 1,
+          filter: 'blur(0px)',
+        }, { duration: BURN_AMOUNT_IN / 1000, ease: EASE_OUT_EXPO as any });
 
-      // Act 1 — Charge (0–600ms): trail draws upward
-      setTimeout(() => setTrailVisible(true), 100),
-
-      // Act 2 — Burn (600ms): bg shifts to crimson, sound, haptic, countdown starts
-      setTimeout(() => {
-        setBgColor('#0F0608');
+        // Sound + haptic at peak visibility
         playBurnSound();
         hapticBurn();
-        setAmountColor('#F59E0B');
 
-        const COUNTDOWN_DURATION = 700;
-        const startTime = performance.now();
-        const tick = () => {
-          const elapsed  = performance.now() - startTime;
-          const progress = Math.min(elapsed / COUNTDOWN_DURATION, 1);
-          const eased    = progress * (2 - progress); // easeOut
-          setDisplayAmount(startValue - difference * eased);
-          if (progress < 1) {
-            countdownAFRef.current = requestAnimationFrame(tick);
-          } else {
-            setDisplayAmount(endValue);
-            countdownAFRef.current = null;
-          }
-        };
-        countdownAFRef.current = requestAnimationFrame(tick);
-      }, 600),
+        // Hold — let it sit
+        await animate('[data-id="burn-amount"]', { opacity: 1 }, { duration: BURN_HOLD / 1000 });
 
-      // Hold amber 200ms after countdown ends (600 + 700 = 1300ms)
-      // then restore background and color
-      setTimeout(() => {
-        setBgColor('#060A14');
-        setAmountColor('rgba(255,255,255,0.95)');
-        setSenderDimmed(true);
-      }, 1500),
+        // Fire ember dots (don't await — fire and forget)
+        animate('[data-id="ember-1"]', { opacity: [0.6, 0], y: [0, -36], x: [0, -8] }, { duration: EMBER_DRIFT / 1000, ease: 'easeOut' });
+        animate('[data-id="ember-2"]', { opacity: [0.5, 0], y: [0, -44], x: [0, 6] }, { duration: EMBER_DRIFT / 1000, ease: 'easeOut', delay: 0.08 });
+        animate('[data-id="ember-3"]', { opacity: [0.4, 0], y: [0, -30], x: [0, 12] }, { duration: EMBER_DRIFT / 1000, ease: 'easeOut', delay: 0.15 });
 
-      // End of burn phase
-      setTimeout(advanceToSending, 1800),
-    ];
+        // Dissolve burn amount — upward drift + fade
+        await animate('[data-id="burn-amount"]', {
+          opacity: 0,
+          y: -24,
+        }, { duration: BURN_DISSOLVE / 1000, ease: EASE_OUT_EXPO as any });
 
-    return () => {
-      timers.forEach(clearTimeout);
-      if (countdownAFRef.current) cancelAnimationFrame(countdownAFRef.current);
+        // Advance to sending
+        advanceToSending();
+      } catch {
+        // Animation interrupted (component unmounted) — safe to ignore
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
 
-  // ── SENDING PHASE ──────────────────────────────────────────────────────────
+    run();
+  }, [phase, reducedMotion, animate, scope, advanceToSending]);
+
+  // ── SENDING PHASE ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'sending') return;
+    if (phase !== 'sending' || sequenceRunRef.current.sending) return;
+    sequenceRunRef.current.sending = true;
 
     if (reducedMotion) {
-      setTimeout(advanceToSuccess, 400);
+      setTimeout(advanceToSuccess, 300);
       return;
     }
 
-    // Act 3 — Send: trail draws down, recipient brightens
-    playSendSound();
+    const run = async () => {
+      try {
+        // Cool background from crimson to sapphire-dark
+        await animate(scope.current, { backgroundColor: SEND_BG }, { duration: SEND_FADE_IN / 1000, ease: EASE_OUT_EXPO as any });
 
-    const timers: ReturnType<typeof setTimeout>[] = [
-      // Act 4 — Resolution: checkmark at 800ms
-      setTimeout(() => {
-        hapticImpact();
-        setShowCheckmark(true);
-        setRecipientArriving(true);
-      }, 800),
+        // Scale in send amount
+        await animate('[data-id="send-amount"]', {
+          opacity: 1,
+          scale: 1,
+          filter: 'blur(0px)',
+        }, { duration: SEND_AMOUNT_IN / 1000, ease: EASE_OUT_EXPO as any });
 
-      // Pills fade out at 1000ms
-      setTimeout(() => setPillsVisible(false), 1000),
+        // Sound
+        playSendSound();
 
-      // Advance to success at 2200ms
-      setTimeout(advanceToSuccess, 2200),
-    ];
+        // Hold
+        await animate('[data-id="send-amount"]', { opacity: 1 }, { duration: SEND_HOLD / 1000 });
 
-    return () => timers.forEach(clearTimeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+        // Clean dissolve — upward drift + fade (no particles, directional)
+        await animate('[data-id="send-amount"]', {
+          opacity: 0,
+          y: -20,
+        }, { duration: SEND_DISSOLVE / 1000, ease: EASE_OUT_EXPO as any });
 
-  // ── SUCCESS PHASE ──────────────────────────────────────────────────────────
+        // Advance to success
+        advanceToSuccess();
+      } catch {
+        // Animation interrupted
+      }
+    };
+
+    run();
+  }, [phase, reducedMotion, animate, scope, advanceToSuccess]);
+
+  // ── SUCCESS PHASE ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'success') return;
+    if (phase !== 'success' || sequenceRunRef.current.success) return;
+    sequenceRunRef.current.success = true;
 
     playSuccessSound();
     hapticSuccess();
-    setBgColor(BRAND_BLUE);          // sapphire bloom
     setReceiptTime(new Date().toLocaleTimeString());
-  }, [phase]);
 
-  // ─── Reduced motion — static success state ────────────────────────────────
+    if (reducedMotion) {
+      setShowSuccess(true);
+      return;
+    }
+
+    const run = async () => {
+      try {
+        // Flash to full sapphire
+        await animate(scope.current, { backgroundColor: SUCCESS_BG }, { duration: 0.15 });
+
+        // Draw checkmark
+        await animate('[data-id="success-check"]', {
+          opacity: 1,
+          scale: 1,
+        }, { duration: SUCCESS_CHECKMARK_DRAW / 1000, type: 'spring' as any, stiffness: 260, damping: 25 });
+
+        // Checkmark SVG path draw
+        animate('[data-id="check-path"]', { pathLength: 1 }, { duration: 0.35, ease: EASE_OUT_EXPO as any });
+
+        // Hold checkmark center-screen
+        await animate('[data-id="success-check"]', { opacity: 1 }, { duration: SUCCESS_CHECKMARK_HOLD / 1000 });
+
+        // Cool background to settled dark
+        animate(scope.current, { backgroundColor: SETTLED_BG }, { duration: 1.2, ease: 'easeOut' });
+
+        // Lift checkmark to upper zone
+        await animate('[data-id="success-check"]', {
+          y: '-20vh',
+        }, { duration: SUCCESS_CHECKMARK_LIFT / 1000, ease: EASE_OUT_EXPO as any });
+
+        // Reveal success content
+        setShowSuccess(true);
+      } catch {
+        setShowSuccess(true);
+      }
+    };
+
+    run();
+  }, [phase, reducedMotion, animate, scope]);
+
+  // ── Reduced motion: static success ──
   if (reducedMotion && phase === 'success') {
     return (
       <div
         className="flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6"
-        style={{ background: BRAND_BLUE }}
+        style={{ background: SETTLED_BG }}
       >
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="mb-6">
-          <path d="M14 28L24 38L42 18"
-            stroke={`${SUCCESS_GREEN}e6`} strokeWidth="3"
+          <path d="M14 28L24 38L42 18" stroke="white" strokeWidth="2.5"
             strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <p className="font-satoshi font-medium text-base mb-8"
@@ -183,313 +240,227 @@ export const AnimationSequence = () => {
     );
   }
 
-  // ─── Main render ──────────────────────────────────────────────────────────
+  // ─── Main Render ────────────────────────────────────────────────────────────
 
   return (
-    <motion.div
+    <div
+      ref={scope}
       className="relative flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6"
-      animate={{ backgroundColor: bgColor }}
-      transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+      style={{ backgroundColor: BG_PRIMARY }}
     >
 
-      {/* ── SCREEN 5 — burn and sending phases ────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          ACT 1 — BURN
+          Center-screen: burn amount in amber/crimson
+          ══════════════════════════════════════════════════════════════════════ */}
+      <div
+        data-id="burn-amount"
+        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+        style={{ opacity: 0, scale: 0.85, filter: 'blur(8px)' }}
+      >
+        <span
+          className="font-clash font-bold"
+          style={{
+            fontSize: 'clamp(2.5rem, 10vw, 5rem)',
+            letterSpacing: '-0.02em',
+            color: '#F59E0B',
+          }}
+        >
+          {formatQF(burnAmountWei)}
+        </span>
+        <span
+          className="font-satoshi font-medium mt-2"
+          style={{
+            fontSize: 'clamp(0.875rem, 2.5vw, 1.125rem)',
+            color: `${BURN_CRIMSON}cc`,
+          }}
+        >
+          QF burned forever
+        </span>
+
+        {/* Ember dots — positioned relative to the amount, start invisible */}
+        <div className="relative" style={{ width: 0, height: 0 }}>
+          <div data-id="ember-1" className="absolute rounded-full" style={{ width: 4, height: 4, background: '#F59E0B', opacity: 0, top: -20, left: -16 }} />
+          <div data-id="ember-2" className="absolute rounded-full" style={{ width: 3, height: 3, background: '#EF4444', opacity: 0, top: -16, left: 8 }} />
+          <div data-id="ember-3" className="absolute rounded-full" style={{ width: 3, height: 3, background: '#F59E0B', opacity: 0, top: -24, left: 20 }} />
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ACT 2 — SEND
+          Center-screen: sent amount in white/sapphire
+          ══════════════════════════════════════════════════════════════════════ */}
+      <div
+        data-id="send-amount"
+        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+        style={{ opacity: 0, scale: 0.9, filter: 'blur(8px)' }}
+      >
+        <span
+          className="font-clash font-bold"
+          style={{
+            fontSize: 'clamp(2.5rem, 10vw, 5rem)',
+            letterSpacing: '-0.02em',
+            color: 'rgba(255,255,255,0.95)',
+          }}
+        >
+          {formatQF(recipientAmountWei)}
+        </span>
+        <span
+          className="font-satoshi font-medium mt-2"
+          style={{
+            fontSize: 'clamp(0.875rem, 2.5vw, 1.125rem)',
+            color: `${BRAND_BLUE}aa`,
+          }}
+        >
+          QF sent
+        </span>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ACT 3 — SUCCESS
+          Checkmark draws center, lifts up. Receipt + actions appear below.
+          ══════════════════════════════════════════════════════════════════════ */}
+
+      {/* Checkmark — always in DOM, starts invisible */}
+      <div
+        data-id="success-check"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
+        style={{ opacity: 0, scale: 0.6 }}
+      >
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+          <motion.path
+            data-id="check-path"
+            d="M16 32L27 43L48 20"
+            stroke="white"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            style={{ pathLength: 0 }}
+          />
+        </svg>
+      </div>
+
+      {/* Success content — receipt, actions, status. Mounts after checkmark lifts. */}
       <AnimatePresence>
-        {(phase === 'burn' || phase === 'sending') && (
+        {showSuccess && (
           <motion.div
-            key="screen5"
-            className="relative w-full flex flex-col items-center"
-            style={{ minHeight: '72vh' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{    opacity: 0, transition: { duration: 0.3 } }}
-            transition={{ duration: 0.4 }}
-          >
-            {/* ── Sender pill — top ── */}
-            <AnimatePresence>
-              {pillsVisible && (
-                <motion.div
-                  className="absolute left-1/2 -translate-x-1/2"
-                  style={{ top: '10%' }}
-                  initial={{ opacity: 0, y: -12 }}
-                  animate={{ opacity: 1, y:   0  }}
-                  exit={{    opacity: 0, y:  -8, transition: { duration: 0.35 } }}
-                  transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
-                >
-                  <NamePill
-                    name={senderName || 'you'}
-                    avatarUrl={senderAvatar ?? undefined}
-                    state={senderDimmed ? 'dimmed' : 'default'}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* ── Vertical trail ── */}
-            <AnimatePresence>
-              {trailVisible && pillsVisible && (
-                <motion.svg
-                  className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-                  style={{ top: '18%', height: '64%', width: 2, overflow: 'visible' }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{    opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <motion.line
-                    x1="1" y1="0%" x2="1" y2="100%"
-                    stroke={`rgba(0,64,255,0.30)`}
-                    strokeWidth="1.5"
-                    strokeDasharray="4 6"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.55, ease: EASE_OUT_EXPO }}
-                  />
-                </motion.svg>
-              )}
-            </AnimatePresence>
-
-            {/* ── Amount — center stage ── */}
-            <AnimatePresence>
-              {!showCheckmark && (
-                <motion.div
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 pointer-events-none"
-                  initial={{ scale: 0.7, opacity: 0, filter: 'blur(8px)' }}
-                  animate={
-                    phase === 'sending'
-                      ? { scale: 1, opacity: [1, 1, 0], filter: 'blur(0px)', y: [0, 0, 160] }
-                      : { scale: 1, opacity: 1,        filter: 'blur(0px)' }
-                  }
-                  transition={
-                    phase === 'sending'
-                      ? {
-                          scale:   { duration: 0.4, ease: EASE_OUT_EXPO },
-                          filter:  { duration: 0.4 },
-                          opacity: { duration: 0.8, times: [0, 0.4, 1] },
-                          y:       { duration: 0.8, ease: [0.25, 0.1, 0.25, 1], times: [0, 0.1, 1] },
-                        }
-                      : { duration: 0.5, ease: EASE_OUT_EXPO }
-                  }
-                  exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.2 } }}
-                >
-                  <span
-                    className="font-clash font-bold"
-                    style={{
-                      fontSize: 'clamp(2.5rem, 8vw, 5rem)',
-                      letterSpacing: '-0.02em',
-                      color: amountColor,
-                      transition: 'color 0.15s ease',
-                    }}
-                  >
-                    {formatQF(BigInt(Math.max(0, Math.round(displayAmount * 1e18))))}
-                  </span>
-                  <span
-                    className="font-clash font-bold block"
-                    style={{
-                      fontSize: 'clamp(1rem, 2.5vw, 1.5rem)',
-                      color: `${BRAND_BLUE}cc`,
-                      marginTop: 2,
-                    }}
-                  >
-                    QF
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* ── Checkmark — emerald stroke, path-length animation ── */}
-            <AnimatePresence>
-              {showCheckmark && (
-                <motion.div
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  animate={{ scale: 1,   opacity: 1 }}
-                  exit={{    scale: 0.6, opacity: 0 }}
-                  transition={{ ...EASE_SPRING }}
-                >
-                  <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
-                    <motion.path
-                      d="M15 30L26 41L45 19"
-                      stroke={`${SUCCESS_GREEN}e6`}
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
-                    />
-                  </svg>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* ── Recipient pill — bottom ── */}
-            <AnimatePresence>
-              {pillsVisible && (
-                <motion.div
-                  className="absolute left-1/2 -translate-x-1/2"
-                  style={{ bottom: '10%' }}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y:  0  }}
-                  exit={{    opacity: 0, y:  8, transition: { duration: 0.35 } }}
-                  transition={{ delay: 0.15, duration: 0.4, ease: EASE_OUT_EXPO }}
-                >
-                  <NamePill
-                    name={recipientName || recipientAddress?.slice(0, 8) || '?'}
-                    avatarUrl={recipientAvatar ?? undefined}
-                    state={recipientArriving ? 'arriving' : 'default'}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── SCREEN 6 — success phase ───────────────────────────────────────── */}
-      <AnimatePresence>
-        {phase === 'success' && (
-          <motion.div
-            key="screen6"
+            key="success-content"
             className="flex flex-col items-center text-center relative z-10 w-full px-4"
+            style={{ paddingTop: '28vh' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
+            transition={{ duration: 0.4, ease: EASE_OUT_EXPO as any }}
           >
-            {/* Background cools from sapphire toward dark over 1500ms — 800ms delay */}
-            <motion.div
-              className="fixed inset-0 pointer-events-none z-0"
-              style={{ background: '#080D1A' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1.5, ease: 'easeOut', delay: 0.8 }}
-            />
-
-            {/* Checkmark — persists from Screen 5 */}
-            <motion.div
-              className="relative z-10 mb-6"
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1,    opacity: 1 }}
-              transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
-            >
-              <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
-                <path
-                  d="M15 30L26 41L45 19"
-                  stroke={`${SUCCESS_GREEN}e6`}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </motion.div>
-
-            {/* Burn epitaph — 800ms delay. Past tense: "burned" not "burns" */}
+            {/* Burn epitaph */}
             <motion.p
-              className="relative z-10 font-satoshi font-medium text-base mb-8"
+              className="font-satoshi font-medium text-base mb-8"
               style={{ color: `${BURN_CRIMSON}cc` }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.4, ease: EASE_OUT_EXPO }}
+              transition={{ delay: 0.1, duration: 0.4, ease: EASE_OUT_EXPO as any }}
             >
               🔥 {formatQF(burnAmountWei)} QF burned forever
             </motion.p>
 
-            {/* Receipt card — slides up at 1400ms, spring */}
+            {/* ── Receipt Card ── */}
             <motion.div
-              className="relative z-10 w-full max-w-sm mx-auto mb-8 selectable"
+              className="relative w-full max-w-sm mx-auto mb-8 selectable"
               style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.10)',
+                background: 'rgba(0,64,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
                 borderRadius: 20,
-                padding: '16px 18px',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                padding: '24px 20px 20px',
               }}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0  }}
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{
-                delay: 1.4,
+                delay: SUCCESS_RECEIPT_DELAY / 1000 + 0.1,
                 type: 'spring',
                 stiffness: 200,
                 damping: 24,
               }}
             >
-              {/* Sender → Recipient row */}
-              <div className="flex items-center gap-3 mb-4">
-                {/* Sender chip */}
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <AvatarFallback
-                    name={senderName}
-                    address={null}
-                    avatarUrl={senderAvatar}
-                    size={24}
-                    className="flex-shrink-0"
-                  />
-                  <span className="font-satoshi text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                    {senderName ? <>{senderName}<span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span></> : 'you'}
-                  </span>
-                </div>
+              {/* Share button — top right */}
+              <button
+                className="absolute top-4 right-4 flex-shrink-0"
+                style={{ color: 'rgba(255,255,255,0.25)' }}
+                onClick={async () => {
+                  const text = `Sent ${formatQF(recipientAmountWei)} QF to ${
+                    recipientName ? recipientName + '.qf' : displayRecipient
+                  } · ${formatQF(burnAmountWei)} QF burned forever · qfpay.xyz`;
+                  if (navigator.share) {
+                    await navigator.share({ text });
+                  } else {
+                    navigator.clipboard.writeText(text);
+                  }
+                }}
+                aria-label="Share"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
 
-                {/* Sapphire arrow */}
-                <div style={{ height: 1, flex: '0 0 20px', background: `rgba(0,64,255,0.45)` }} />
-
-                {/* Recipient chip */}
-                <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-                  <span className="font-satoshi text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                    {recipientName
-                      ? <>{recipientName}<span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span></>
-                      : displayRecipient}
-                  </span>
-                  <AvatarFallback
-                    name={recipientName}
-                    address={recipientAddress}
-                    avatarUrl={recipientAvatar}
-                    size={24}
-                    className="flex-shrink-0"
-                  />
-                </div>
+              {/* Recipient avatar — centered, hero of the receipt */}
+              <div className="flex justify-center mb-3">
+                <AvatarFallback
+                  name={recipientName}
+                  address={recipientAddress}
+                  avatarUrl={recipientAvatar}
+                  size={48}
+                  borderColor="rgba(255,255,255,0.10)"
+                />
               </div>
 
-              {/* Amount + burn row */}
-              <div className="flex items-center justify-between">
-                <div className="font-mono text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  {formatQF(recipientAmountWei)} QF ·{' '}
-                  <span style={{ color: `${BURN_CRIMSON}a6` }}>
-                    🔥 {formatQF(burnAmountWei)} burned
-                  </span>
-                </div>
-                {/* Share icon */}
-                <button
-                  className="ml-2 flex-shrink-0 hover:opacity-80 transition-opacity"
-                  style={{ color: 'rgba(255,255,255,0.30)', fontSize: '1rem' }}
-                  onClick={async () => {
-                    const text = `Sent ${formatQF(recipientAmountWei)} QF to ${
-                      recipientName ? recipientName + '.qf' : displayRecipient
-                    } · ${formatQF(burnAmountWei)} QF burned forever · qfpay.xyz`;
-                    if (navigator.share) {
-                      await navigator.share({ text });
-                    } else {
-                      navigator.clipboard.writeText(text);
-                    }
-                  }}
-                  aria-label="Share"
+              {/* Recipient name */}
+              <p className="font-satoshi font-medium text-sm text-center mb-5" style={{ color: 'rgba(255,255,255,0.70)' }}>
+                {recipientName ? (
+                  <>
+                    <span>{recipientName}</span>
+                    <span style={{ color: `${BRAND_BLUE}d9` }}>.qf</span>
+                  </>
+                ) : displayRecipient}
+              </p>
+
+              {/* Sent amount — the hero of the card */}
+              <div className="flex items-baseline justify-center gap-2 mb-5">
+                <span
+                  className="font-clash font-bold"
+                  style={{ fontSize: 28, letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.90)' }}
                 >
-                  ↗
-                </button>
+                  {formatQF(recipientAmountWei)}
+                </span>
+                <span
+                  className="font-clash font-bold"
+                  style={{ fontSize: 16, color: `${BRAND_BLUE}cc` }}
+                >
+                  QF
+                </span>
+              </div>
+
+              {/* Metadata lines */}
+              <div className="flex flex-col items-center gap-1">
+                <span className="font-mono text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  from {senderName ? (
+                    <>{senderName}<span style={{ color: `${BRAND_BLUE}99` }}>.qf</span></>
+                  ) : 'you'}
+                </span>
+                <span className="font-mono text-xs" style={{ color: `${BURN_CRIMSON}99` }}>
+                  🔥 {formatQF(burnAmountWei)} QF burned
+                </span>
               </div>
 
               {/* Timestamp */}
-              <p className="font-mono mt-2" style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
+              <p className="font-mono mt-3 text-center" style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>
                 {receiptTime}
               </p>
             </motion.div>
 
-            {/* Action buttons — 2000ms delay */}
+            {/* Action buttons */}
             <motion.div
-              className="relative z-10 flex flex-col items-center gap-3"
+              className="flex flex-col items-center gap-3"
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y:  0  }}
-              transition={{ delay: 2.0, duration: 0.4, ease: EASE_OUT_EXPO }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.4, ease: EASE_OUT_EXPO as any }}
             >
               <ShimmerButton onClick={reset}>Send again</ShimmerButton>
               <button
@@ -501,12 +472,12 @@ export const AnimationSequence = () => {
               </button>
             </motion.div>
 
-            {/* ── On-chain confirmation status — copied exactly from original ── */}
+            {/* On-chain confirmation status */}
             <motion.div
-              className="relative z-10 mt-6 flex items-center gap-2"
+              className="mt-6 flex items-center gap-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 2.4, duration: 0.5 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
             >
               {confirmed === true ? (
                 <>
@@ -536,11 +507,9 @@ export const AnimationSequence = () => {
                 </>
               )}
             </motion.div>
-
           </motion.div>
         )}
       </AnimatePresence>
-
-    </motion.div>
+    </div>
   );
 };

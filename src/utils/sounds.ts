@@ -149,3 +149,32 @@ export function playSuccessSound(): void {
     // Silently fail
   }
 }
+
+/**
+ * Signed sound — crisp single impact tone, like a stamp hitting paper
+ * Plays when wallet returns tx hash, before animation sequence begins
+ */
+export function playSignedSound(): void {
+  if (!isSoundEnabled()) return;
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+
+    // Single crisp tone — C6 (1046 Hz), fast attack, quick decay
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1046.5, now);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.18, now + 0.01); // near-instant attack
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  } catch {
+    // Silently fail
+  }
+}

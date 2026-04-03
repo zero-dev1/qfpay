@@ -8,7 +8,8 @@ import { writeContract } from '../utils/contractCall';
 import { QFPAY_ROUTER_ADDRESS, ROUTER_ABI } from '../config/contracts';
 import { isRetryableError, RETRY_MESSAGE_SHORT } from '../utils/errorHelpers';
 import { showToast } from './Toast';
-import { hapticLight, hapticMedium } from '../utils/haptics';
+import { hapticLight, hapticMedium, hapticTick, hapticSuccess } from '../utils/haptics';
+import { playSignedSound } from '../utils/sounds';
 import { EASE_OUT_EXPO } from '../lib/animations';
 import { BRAND_BLUE, BURN_CRIMSON } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -126,7 +127,7 @@ function HoldToSignButton({
         border: '1.5px solid rgba(255,255,255,0.10)',
         background: 'transparent',
         WebkitTapHighlightColor: 'transparent',
-        overflow: 'hidden',
+        overflow: isIdle ? 'visible' : 'hidden',
       }}
       onPointerDown={buttonState === 'idle' ? onPointerDown : undefined}
       onPointerUp={onPointerUp}
@@ -139,16 +140,18 @@ function HoldToSignButton({
       }}
       transition={{ delay: 0.35, duration: 0.4, ease: EASE_OUT_EXPO }}
     >
-      {/* Idle shimmer — rotating bright wedge on the border ring */}
+      {/* Idle shimmer — rotating bright wedge on the border ring ONLY */}
       {isIdle && (
         <motion.div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
+            // Position slightly outside to overlap the border
+            inset: -1,
             borderRadius: '50%',
-            background: `conic-gradient(from 0deg, rgba(0,64,255,0.02) 0%, rgba(100,160,255,0.35) 4%, rgba(140,180,255,0.15) 8%, rgba(0,64,255,0.02) 12%, transparent 16%, transparent 100%)`,
-            // Mask to show only the border ring (2px wide)
-            mask: 'radial-gradient(circle, transparent calc(50% - 2.5px), black calc(50% - 2px), black 50%, transparent calc(50% + 0.5px))',
-            WebkitMask: 'radial-gradient(circle, transparent calc(50% - 2.5px), black calc(50% - 2px), black 50%, transparent calc(50% + 0.5px))',
+            background: `conic-gradient(from 0deg, transparent 0deg, transparent 340deg, rgba(100,160,255,0.40) 350deg, rgba(140,180,255,0.55) 355deg, rgba(100,160,255,0.40) 360deg)`,
+            // Mask: punch out everything except the outer 2.5px ring
+            mask: 'radial-gradient(circle at center, transparent 0%, transparent calc(50% - 3px), black calc(50% - 1.5px), black 50%, transparent calc(50% + 0.5px))',
+            WebkitMask: 'radial-gradient(circle at center, transparent 0%, transparent calc(50% - 3px), black calc(50% - 1.5px), black 50%, transparent calc(50% + 0.5px))',
           }}
           animate={{ rotate: 360 }}
           transition={{ duration: IDLE_ROTATION_DURATION, repeat: Infinity, ease: 'linear' }}
@@ -174,23 +177,19 @@ function HoldToSignButton({
       {/* Confirmed / signing full fill */}
       {(buttonState === 'confirmed' || buttonState === 'signing') && (
         <motion.div
-          className="absolute inset-0 pointer-events-none flex items-center justify-center"
+          className="absolute inset-0 pointer-events-none"
           style={{
             borderRadius: '50%',
             background: BRAND_BLUE,
           }}
           initial={{ opacity: 0.8 }}
           animate={{ opacity: 1 }}
-        >
-          {buttonState === 'signing' && (
-            <Loader2 className="w-5 h-5 text-white animate-spin" />
-          )}
-        </motion.div>
+        />
       )}
 
       {/* Label */}
       <span
-        className="relative z-10 text-sm pointer-events-none select-none"
+        className="relative z-10 text-sm pointer-events-none select-none flex items-center justify-center"
         style={{
           color:
             isHolding || holdProgress > 0.3 || buttonState !== 'idle'
@@ -200,9 +199,21 @@ function HoldToSignButton({
         }}
       >
         {buttonState === 'confirmed' ? (
-          <Check className="w-5 h-5" />
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <Check className="w-5 h-5" />
+          </motion.div>
         ) : buttonState === 'signing' ? (
-          ''
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Loader2 className="w-5 h-5 animate-spin" />
+          </motion.div>
         ) : isDesktop ? (
           <span className="flex flex-col items-center gap-0.5">
             <span>Sign</span>
@@ -249,7 +260,7 @@ export const ConfirmScreen = () => {
   const [sweepPaused, setSweepPaused] = useState(false);
 
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const halfwayHapticRef = useRef(false);
+  const impactHapticRef = useRef(false);
   const isHoldingRef = useRef(false);
   const holdProgressRef = useRef(0);
   const retractRafRef = useRef<number | null>(null);
@@ -302,7 +313,9 @@ export const ConfirmScreen = () => {
       }
 
       setButtonState('confirmed');
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      playSignedSound();
+      hapticSuccess();
+      await new Promise((resolve) => setTimeout(resolve, 600)); // increased from 400 to 600 for breath
 
       startAnimation(txHash);
 
@@ -347,17 +360,29 @@ export const ConfirmScreen = () => {
       retractRafRef.current = null;
     }
     setIsHolding(true);
-    halfwayHapticRef.current = false;
+    impactHapticRef.current = false;
     hapticLight();
+
     let elapsed = 0;
+    let lastTickAt = 0; // track last tick time for interval-based haptics
+
     holdTimerRef.current = setInterval(() => {
       elapsed += TICK_INTERVAL;
       const progress = Math.min(elapsed / HOLD_DURATION, 1);
       setHoldProgress(progress);
-      if (progress >= 0.5 && !halfwayHapticRef.current) {
-        halfwayHapticRef.current = true;
+
+      // Rhythmic haptic ticks during hold — every 200ms
+      if (elapsed - lastTickAt >= 200) {
+        lastTickAt = elapsed;
+        hapticTick();
+      }
+
+      // Stronger impact at 75%
+      if (progress >= 0.75 && !impactHapticRef.current) {
+        impactHapticRef.current = true;
         hapticMedium();
       }
+
       if (progress >= 1) {
         clearInterval(holdTimerRef.current!);
         holdTimerRef.current = null;
@@ -414,7 +439,7 @@ export const ConfirmScreen = () => {
       setHoldProgress(0);
     }
 
-    halfwayHapticRef.current = false;
+    impactHapticRef.current = false;
   }, []); // No state deps — uses refs
 
   useEffect(() => {
@@ -530,15 +555,15 @@ export const ConfirmScreen = () => {
         className="relative w-full flex flex-col items-center"
         style={{
           maxWidth: 380,
-          background: 'linear-gradient(to bottom, rgba(0,64,255,0.05) 0%, rgba(0,64,255,0.02) 40%, rgba(6,10,20,0.95) 100%)',
-          borderTop: '1px solid rgba(0,64,255,0.18)',
-          borderLeft: '1px solid rgba(0,64,255,0.10)',
-          borderRight: '1px solid rgba(0,64,255,0.10)',
-          borderBottom: '1px solid rgba(0,64,255,0.04)',
+          background: 'linear-gradient(to bottom, rgba(0,64,255,0.10) 0%, rgba(0,64,255,0.04) 40%, rgba(6,10,20,0.95) 100%)',
+          borderTop: '1px solid rgba(0,64,255,0.28)',
+          borderLeft: '1px solid rgba(0,64,255,0.16)',
+          borderRight: '1px solid rgba(0,64,255,0.16)',
+          borderBottom: '1px solid rgba(0,64,255,0.06)',
           borderRadius: 24,
           padding: '44px 24px 40px',
           overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(0,64,255,0.06), 0 2px 12px rgba(0,64,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)',
+          boxShadow: '0 8px 32px rgba(0,64,255,0.10), 0 2px 12px rgba(0,64,255,0.07), inset 0 1px 0 rgba(255,255,255,0.08)',
         }}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -656,9 +681,9 @@ export const ConfirmScreen = () => {
           background: linear-gradient(
             110deg,
             transparent 20%,
-            rgba(0,64,255,0.03) 40%,
-            rgba(0,64,255,0.06) 50%,
-            rgba(0,64,255,0.03) 60%,
+            rgba(0,64,255,0.05) 40%,
+            rgba(0,64,255,0.10) 50%,
+            rgba(0,64,255,0.05) 60%,
             transparent 80%
           );
           background-size: 200% 100%;

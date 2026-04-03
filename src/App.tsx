@@ -13,7 +13,7 @@ import { Toast } from './components/Toast';
 import { ConnectedPill } from './components/ConnectedPill';
 import { WifiOff } from 'lucide-react';
 import { EASE_OUT_EXPO } from './lib/animations';
-import { BG_PRIMARY, BRAND_BLUE_DEEP } from './lib/colors';
+import { BG_PRIMARY } from './lib/colors';
 
 function App() {
   const { address } = useWalletStore();
@@ -40,11 +40,6 @@ function App() {
     };
   }, []);
 
-  // ── Background color: dark throughout, deep blue only at success ──
-  const getBackgroundColor = (): string => {
-    if (phase === 'success') return BRAND_BLUE_DEEP;
-    return BG_PRIMARY;
-  };
 
   const isAnimating =
     phase === 'burn' || phase === 'sending' || phase === 'success'
@@ -82,8 +77,7 @@ function App() {
     <LayoutGroup>
     <motion.div
       className="h-[100svh] w-full relative overflow-hidden"
-      animate={{ backgroundColor: getBackgroundColor() }}
-      transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
+      style={{ backgroundColor: BG_PRIMARY }}
     >
       {/* ── Offline indicator ── */}
       <AnimatePresence>

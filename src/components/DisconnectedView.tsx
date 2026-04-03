@@ -104,14 +104,14 @@ export function DisconnectedView() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
       className="h-[100svh] flex flex-col items-center bg-[#060A14] px-6 overflow-hidden"
-      style={{ paddingTop: 'clamp(20vh, 28vh, 32vh)' }}
+      style={{ paddingTop: 'clamp(16vh, 20vh, 24vh)' }}
     >
       {/* Ambient background glow — slow breathing radial gradient */}
       {!reducedMotion && (
         <motion.div
           className="fixed inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse at 50% 30%, rgba(0,64,255,0.04) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse at 50% 24%, rgba(0,64,255,0.04) 0%, transparent 70%)',
           }}
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}

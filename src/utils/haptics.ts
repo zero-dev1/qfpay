@@ -40,3 +40,10 @@ export function hapticImpact() {
 export function hapticSuccess() {
   haptics.trigger('success');
 }
+
+/** Tick — subtle pulse during hold-to-sign, heartbeat feel */
+export function hapticTick() {
+  haptics.trigger([
+    { duration: 8, intensity: 0.4 }
+  ]);
+}
