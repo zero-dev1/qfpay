@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Check, CornerDownLeft, ChevronLeft } from 'lucide-react';
+import { Loader2, Check, CornerDownLeft, ChevronLeft, Flame } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
@@ -556,23 +556,29 @@ export const ConfirmScreen = () => {
         style={{
           maxWidth: 380,
           background: 'linear-gradient(to bottom, rgba(0,64,255,0.10) 0%, rgba(0,64,255,0.04) 40%, rgba(6,10,20,0.95) 100%)',
-          borderTop: '1px solid rgba(0,64,255,0.28)',
-          borderLeft: '1px solid rgba(0,64,255,0.16)',
-          borderRight: '1px solid rgba(0,64,255,0.16)',
-          borderBottom: '1px solid rgba(0,64,255,0.06)',
+          border: '1px solid rgba(0,64,255,0.28)',
           borderRadius: 24,
           padding: '44px 24px 40px',
           overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(0,64,255,0.10), 0 2px 12px rgba(0,64,255,0.07), inset 0 1px 0 rgba(255,255,255,0.08)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
         }}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05, duration: 0.45, ease: EASE_OUT_EXPO }}
       >
-        {/* Diagonal shimmer sweep — sapphire, adapted from QNS pricing cards */}
+        {/* Border shimmer — traces the card perimeter only */}
         {!reducedMotion && (
           <div
-            className="absolute inset-0 rounded-3xl pointer-events-none z-0 confirm-card-shimmer"
+            className="absolute pointer-events-none z-0 confirm-card-border-shimmer"
+            style={{
+              inset: -1,
+              borderRadius: 25,
+              mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              maskComposite: 'exclude',
+              WebkitMaskComposite: 'xor',
+              padding: 1,
+            }}
           />
         )}
 
@@ -647,10 +653,11 @@ export const ConfirmScreen = () => {
             {formatQF(totalRequiredWei)} QF leaves your wallet
           </span>
           <span
-            className="font-satoshi text-[13px]"
+            className="font-satoshi text-[13px] inline-flex items-center gap-1"
             style={{ color: `${BURN_CRIMSON}80` }}
           >
-            🔥 {formatQF(burnAmountWei)} QF burns
+            <Flame className="w-3.5 h-3.5" style={{ color: BURN_CRIMSON }} />
+            {formatQF(burnAmountWei)} QF burns
           </span>
         </motion.div>
       </motion.div>
@@ -673,21 +680,21 @@ export const ConfirmScreen = () => {
 
       {/* Shimmer keyframe — CSS animation, not Framer, for performance */}
       <style>{`
-        @keyframes confirmShimmer {
+        @keyframes confirmBorderShimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
         }
-        .confirm-card-shimmer {
+        .confirm-card-border-shimmer {
           background: linear-gradient(
             110deg,
             transparent 20%,
-            rgba(0,64,255,0.05) 40%,
-            rgba(0,64,255,0.10) 50%,
-            rgba(0,64,255,0.05) 60%,
+            rgba(0,64,255,0.12) 40%,
+            rgba(0,64,255,0.25) 50%,
+            rgba(0,64,255,0.12) 60%,
             transparent 80%
           );
           background-size: 200% 100%;
-          animation: confirmShimmer 5.5s infinite;
+          animation: confirmBorderShimmer 5.5s infinite;
         }
       `}</style>
     </motion.div>

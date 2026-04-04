@@ -1,11 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
+import { PowerOff } from 'lucide-react';
 import { useWalletStore } from '../stores/walletStore';
 import { usePaymentStore } from '../stores/paymentStore';
 import { getQFBalance, formatQF, truncateAddress } from '../utils/qfpay';
 import { EASE_OUT_EXPO, EASE_SPRING } from '../lib/animations';
-import { BRAND_BLUE, SUCCESS_GREEN, BG_PRIMARY } from '../lib/colors';
+import { BRAND_BLUE, BURN_CRIMSON, SUCCESS_GREEN, BG_PRIMARY } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { hapticLight } from '../utils/haptics';
 import { ShimmerButton } from './hero/ShimmerButton';
 
 type CeremonyPhase = 'blooming' | 'naming' | 'contracting';
@@ -15,7 +17,7 @@ interface IdentityScreenProps {
 }
 
 export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
-  const { qnsName, address, ss58Address, avatarUrl } = useWalletStore();
+  const { qnsName, address, ss58Address, avatarUrl, disconnect } = useWalletStore();
   const { goToRecipient } = usePaymentStore();
   const reducedMotion = useReducedMotion();
 
@@ -23,6 +25,10 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
 
   const [ceremonyPhase, setCeremonyPhase] = useState<CeremonyPhase>('blooming');
   const ceremonyFired = useRef(false);
+
+  // ── QNS lookup timeout ──
+  const [timedOut, setTimedOut] = useState(false);
+  const [showSlowWarning, setShowSlowWarning] = useState(false);
 
   // ── Balance ──
   const [balance, setBalance] = useState<bigint | null>(null);
@@ -63,13 +69,32 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
   useEffect(() => {
     ceremonyFired.current = false;
     setCeremonyPhase('blooming');
+    setTimedOut(false);
+    setShowSlowWarning(false);
   }, []);
+
+  // ── QNS lookup timeout: 6s warning, 12s timeout ──
+  useEffect(() => {
+    if (!address || qnsName) return;
+
+    const warningTimer = setTimeout(() => setShowSlowWarning(true), 6000);
+    const timeoutTimer = setTimeout(() => setTimedOut(true), 12000);
+
+    return () => {
+      clearTimeout(warningTimer);
+      clearTimeout(timeoutTimer);
+    };
+  }, [address, qnsName]);
 
   // ── Ceremony sequencing — auto-advances to RecipientScreen when done ──
   useEffect(() => {
     if (!qnsName) return;
     if (ceremonyFired.current) return;
     ceremonyFired.current = true;
+
+    // Clear any pending timeout state
+    setTimedOut(false);
+    setShowSlowWarning(false);
 
     if (reducedMotion) {
       onCeremonyComplete?.();
@@ -91,8 +116,8 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
     };
   }, [qnsName, reducedMotion, onCeremonyComplete, goToRecipient]);
 
-  // ── Loading — waiting for QNS resolution ──
-  if (address && !qnsName) {
+  // ── Loading — waiting for QNS resolution (with progressive timeout) ──
+  if (address && !qnsName && !timedOut) {
     return (
       <motion.div
         className="flex flex-col items-center justify-center h-[100svh] overflow-hidden w-full"
@@ -109,49 +134,68 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
         >
           Looking for your .qf name…
         </motion.p>
+
+        {/* Amber warning — appears at 6 seconds */}
+        <AnimatePresence>
+          {showSlowWarning && (
+            <motion.p
+              className="font-satoshi text-xs mt-4"
+              style={{ color: '#F59E0B' }}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+            >
+              Taking longer than usual…
+            </motion.p>
+          )}
+        </AnimatePresence>
       </motion.div>
     );
   }
 
-  // ── No QNS — send to dotqf.xyz ──
+  // ── No QNS (either !hasQNS on mount, or timed out) ──
   if (!hasQNS) {
     return (
       <motion.div
         className="flex flex-col items-center justify-center h-[100svh] overflow-hidden px-6 text-center"
+        style={{ background: BG_PRIMARY }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
       >
-        <motion.div
-          className="font-mono text-xl sm:text-2xl mb-8 break-all"
-          style={{ color: 'rgba(255,255,255,0.70)' }}
-          initial={{ scale: 0.7, opacity: 0, filter: 'blur(8px)' }}
-          animate={{ scale: 1, opacity: 1, filter: 'blur(0px)' }}
-          transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
+        {/* Truncated address — smaller, calmer */}
+        <motion.p
+          className="font-mono text-sm mb-6"
+          style={{ color: 'rgba(255,255,255,0.40)' }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
         >
           {truncateAddress(address || '')}
-        </motion.div>
+        </motion.p>
 
+        {/* Headline */}
         <motion.p
-          className="font-satoshi font-medium text-base mb-3"
+          className="font-satoshi font-medium text-base mb-2"
           style={{ color: 'rgba(255,255,255,0.80)' }}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.4, ease: EASE_OUT_EXPO }}
+          transition={{ delay: 0.2, duration: 0.4, ease: EASE_OUT_EXPO }}
         >
-          You need a <span style={{ color: BRAND_BLUE }}>.qf</span> name to send
-          payments.
+          You need a <span style={{ color: BRAND_BLUE }}>.qf</span> name to send payments
         </motion.p>
 
+        {/* Subline with link */}
         <motion.p
           className="font-satoshi text-sm mb-10"
           style={{ color: 'rgba(255,255,255,0.40)' }}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.75, duration: 0.4, ease: EASE_OUT_EXPO }}
+          transition={{ delay: 0.4, duration: 0.4, ease: EASE_OUT_EXPO }}
         >
-          Get one at{' '}
+          Register one at{' '}
           <a
             href="https://dotqf.xyz"
             target="_blank"
@@ -163,10 +207,11 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
           </a>
         </motion.p>
 
+        {/* Register CTA */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.0, duration: 0.4, ease: EASE_OUT_EXPO }}
+          transition={{ delay: 0.6, duration: 0.4, ease: EASE_OUT_EXPO }}
         >
           <ShimmerButton
             onClick={() => window.open('https://dotqf.xyz', '_blank')}
@@ -174,6 +219,34 @@ export const IdentityScreen = ({ onCeremonyComplete }: IdentityScreenProps) => {
             Get my .qf name
           </ShimmerButton>
         </motion.div>
+
+        {/* Disconnect button — round, white bg, PowerOff icon in crimson */}
+        <motion.button
+          className="mt-8 flex flex-col items-center gap-2 select-none"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.4, ease: EASE_OUT_EXPO }}
+          whileTap={{ scale: 0.92 }}
+          onClick={() => {
+            hapticLight();
+            disconnect();
+          }}
+        >
+          <div
+            className="flex items-center justify-center"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.95)',
+            }}
+          >
+            <PowerOff className="w-5 h-5" style={{ color: BURN_CRIMSON }} />
+          </div>
+          <span className="font-satoshi text-[11px]" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            Disconnect
+          </span>
+        </motion.button>
       </motion.div>
     );
   }

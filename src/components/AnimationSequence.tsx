@@ -7,14 +7,13 @@ import { useState, useEffect, useRef } from 'react';
 import { usePaymentStore } from '../stores/paymentStore';
 import { useWalletStore } from '../stores/walletStore';
 import { formatQF } from '../utils/qfpay';
-import { hapticBurn, hapticSuccess } from '../utils/haptics';
+import { hapticBurn, hapticSuccess, hapticLight } from '../utils/haptics';
 import { playBurnSound, playSendSound, playSuccessSound } from '../utils/sounds';
 import { EASE_OUT_EXPO } from '../lib/animations';
 import { BRAND_BLUE, BURN_CRIMSON, SUCCESS_GREEN, BG_PRIMARY } from '../lib/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { AvatarFallback } from './AvatarFallback';
-import { ShimmerButton } from './hero/ShimmerButton';
-import { Share2 } from 'lucide-react';
+import { Share2, Flame, Send, PowerOff } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -26,19 +25,23 @@ const SETTLED_BG = '#080D1A';
 // Timing (ms) — let each act breathe
 const BURN_FADE_IN = 400;
 const BURN_AMOUNT_IN = 500;
-const BURN_HOLD = 800;
+const BURN_HOLD = 1200;
 const BURN_DISSOLVE = 500;
 const EMBER_DRIFT = 600;
+const INTER_ACT_PAUSE = 300;
 
 const SEND_FADE_IN = 400;
 const SEND_AMOUNT_IN = 500;
-const SEND_HOLD = 800;
+const SEND_HOLD = 1100;
 const SEND_DISSOLVE = 400;
 
-const SUCCESS_CHECKMARK_DRAW = 400;
-const SUCCESS_CHECKMARK_HOLD = 600;
+const SUCCESS_CHECKMARK_DRAW = 500;
+const SUCCESS_RIPPLE_EXPAND = 600;
+const SUCCESS_SAPPHIRE_HOLD = 1200;
+const SUCCESS_BG_COOL = 1000;
 const SUCCESS_CHECKMARK_LIFT = 500;
-const SUCCESS_RECEIPT_DELAY = 200;
+
+const ACTION_BUTTON_SIZE = 48;
 
 // ─── AnimationSequence ────────────────────────────────────────────────────────
 
@@ -59,7 +62,7 @@ export const AnimationSequence = () => {
     reset,
   } = usePaymentStore();
 
-  const { qnsName: senderName, avatarUrl: senderAvatar } = useWalletStore();
+  const { qnsName: senderName, disconnect } = useWalletStore();
 
   // ── Derived values ──
   const displayRecipient = recipientName
@@ -113,6 +116,9 @@ export const AnimationSequence = () => {
           opacity: 0,
           y: -24,
         }, { duration: BURN_DISSOLVE / 1000, ease: EASE_OUT_EXPO as any });
+
+        // Pause between acts — silence
+        await animate(scope.current, { backgroundColor: BURN_BG }, { duration: INTER_ACT_PAUSE / 1000 });
 
         // Advance to sending
         advanceToSending();
@@ -184,30 +190,35 @@ export const AnimationSequence = () => {
 
     const run = async () => {
       try {
-        // Flash to full sapphire
-        await animate(scope.current, { backgroundColor: SUCCESS_BG }, { duration: 0.15 });
-
-        // Draw checkmark
+        // 1. Draw checkmark center-screen (on dark bg still)
         await animate('[data-id="success-check"]', {
           opacity: 1,
           scale: 1,
         }, { duration: SUCCESS_CHECKMARK_DRAW / 1000, type: 'spring' as any, stiffness: 260, damping: 25 });
 
-        // Checkmark SVG path draw
-        animate('[data-id="check-path"]', { pathLength: 1 }, { duration: 0.35, ease: EASE_OUT_EXPO as any });
+        // Draw the SVG path
+        animate('[data-id="check-path"]', { pathLength: 1 }, { duration: 0.4, ease: EASE_OUT_EXPO as any });
 
-        // Hold checkmark center-screen
-        await animate('[data-id="success-check"]', { opacity: 1 }, { duration: SUCCESS_CHECKMARK_HOLD / 1000 });
+        // 2. Sapphire ripple expands from center via clip-path
+        await animate('[data-id="sapphire-ripple"]', {
+          clipPath: 'circle(80% at 50% 50%)',
+        }, { duration: SUCCESS_RIPPLE_EXPAND / 1000, ease: EASE_OUT_EXPO as any });
 
-        // Cool background to settled dark
-        animate(scope.current, { backgroundColor: SETTLED_BG }, { duration: 1.2, ease: 'easeOut' });
+        // 3. Hold — pure sapphire + checkmark, nothing else
+        await animate('[data-id="sapphire-ripple"]', { opacity: 1 }, { duration: SUCCESS_SAPPHIRE_HOLD / 1000 });
 
-        // Lift checkmark to upper zone
+        // 4. Cool background: fade the ripple overlay out to reveal settled bg underneath
+        animate(scope.current, { backgroundColor: SETTLED_BG }, { duration: 0.01 });
+        await animate('[data-id="sapphire-ripple"]', {
+          opacity: 0,
+        }, { duration: SUCCESS_BG_COOL / 1000, ease: 'easeOut' });
+
+        // 5. Lift checkmark to upper zone
         await animate('[data-id="success-check"]', {
-          y: '-20vh',
+          y: '-35vh',
         }, { duration: SUCCESS_CHECKMARK_LIFT / 1000, ease: EASE_OUT_EXPO as any });
 
-        // Reveal success content
+        // 6. Reveal success content
         setShowSuccess(true);
       } catch {
         setShowSuccess(true);
@@ -225,16 +236,48 @@ export const AnimationSequence = () => {
         style={{ background: SETTLED_BG }}
       >
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="mb-6">
-          <path d="M14 28L24 38L42 18" stroke="white" strokeWidth="2.5"
+          <path d="M14 28L24 38L42 18" stroke="white" strokeWidth="3"
             strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <p className="font-satoshi font-medium text-base mb-8"
-          style={{ color: `${BURN_CRIMSON}cc` }}>
-          🔥 {formatQF(burnAmountWei)} QF burned forever
-        </p>
-        <div className="flex flex-col items-center gap-3">
-          <ShimmerButton onClick={reset}>Send again</ShimmerButton>
-          <button className="font-satoshi text-sm" style={{ color: 'rgba(255,255,255,0.50)' }} onClick={reset}>Done</button>
+        <div className="flex items-center gap-4 mt-8">
+          <button
+            className="flex flex-col items-center gap-2 select-none"
+            onClick={reset}
+          >
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: ACTION_BUTTON_SIZE,
+                height: ACTION_BUTTON_SIZE,
+                borderRadius: '50%',
+                background: BRAND_BLUE,
+              }}
+            >
+              <Send className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-satoshi text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Send again
+            </span>
+          </button>
+          <button
+            className="flex flex-col items-center gap-2 select-none"
+            onClick={() => { hapticLight(); disconnect(); }}
+          >
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: ACTION_BUTTON_SIZE,
+                height: ACTION_BUTTON_SIZE,
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.95)',
+              }}
+            >
+              <PowerOff className="w-5 h-5" style={{ color: BURN_CRIMSON }} />
+            </div>
+            <span className="font-satoshi text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Disconnect
+            </span>
+          </button>
         </div>
       </div>
     );
@@ -269,12 +312,13 @@ export const AnimationSequence = () => {
           {formatQF(burnAmountWei)}
         </span>
         <span
-          className="font-satoshi font-medium mt-2"
+          className="font-satoshi font-medium mt-2 inline-flex items-center gap-1.5"
           style={{
             fontSize: 'clamp(0.875rem, 2.5vw, 1.125rem)',
             color: `${BURN_CRIMSON}cc`,
           }}
         >
+          <Flame className="w-4 h-4" style={{ color: BURN_CRIMSON }} />
           QF burned forever
         </span>
 
@@ -318,10 +362,21 @@ export const AnimationSequence = () => {
 
       {/* ══════════════════════════════════════════════════════════════════════
           ACT 3 — SUCCESS
-          Checkmark draws center, lifts up. Receipt + actions appear below.
+          Checkmark draws center, sapphire ripple, lifts up.
+          Receipt + actions appear below.
           ══════════════════════════════════════════════════════════════════════ */}
 
-      {/* Checkmark — always in DOM, starts invisible */}
+      {/* Sapphire ripple overlay — clip-path expands from center */}
+      <div
+        data-id="sapphire-ripple"
+        className="absolute inset-0 z-10 pointer-events-none"
+        style={{
+          backgroundColor: SUCCESS_BG,
+          clipPath: 'circle(0% at 50% 50%)',
+        }}
+      />
+
+      {/* Checkmark — always in DOM, starts invisible, sits above ripple */}
       <div
         data-id="success-check"
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
@@ -332,7 +387,7 @@ export const AnimationSequence = () => {
             data-id="check-path"
             d="M16 32L27 43L48 20"
             stroke="white"
-            strokeWidth="2.5"
+            strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
             initial={{ pathLength: 0 }}
@@ -347,25 +402,15 @@ export const AnimationSequence = () => {
           <motion.div
             key="success-content"
             className="flex flex-col items-center text-center relative z-10 w-full px-4"
-            style={{ paddingTop: '28vh' }}
+            style={{ paddingTop: '20vh' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, ease: EASE_OUT_EXPO as any }}
           >
-            {/* Burn epitaph */}
-            <motion.p
-              className="font-satoshi font-medium text-base mb-8"
-              style={{ color: `${BURN_CRIMSON}cc` }}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.4, ease: EASE_OUT_EXPO as any }}
-            >
-              🔥 {formatQF(burnAmountWei)} QF burned forever
-            </motion.p>
 
             {/* ── Receipt Card ── */}
             <motion.div
-              className="relative w-full max-w-sm mx-auto mb-8 selectable"
+              className="relative w-full max-w-sm mx-auto mb-6 selectable"
               style={{
                 background: 'rgba(0,64,255,0.03)',
                 border: '1px solid rgba(255,255,255,0.06)',
@@ -375,16 +420,17 @@ export const AnimationSequence = () => {
               initial={{ opacity: 0, y: 32 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                delay: SUCCESS_RECEIPT_DELAY / 1000 + 0.1,
+                delay: 0.1,
                 type: 'spring',
                 stiffness: 200,
                 damping: 24,
               }}
             >
               {/* Share button — top right */}
-              <button
+              <motion.button
                 className="absolute top-4 right-4 flex-shrink-0"
                 style={{ color: 'rgba(255,255,255,0.25)' }}
+                whileTap={{ scale: 0.85 }}
                 onClick={async () => {
                   const text = `Sent ${formatQF(recipientAmountWei)} QF to ${
                     recipientName ? recipientName + '.qf' : displayRecipient
@@ -398,7 +444,7 @@ export const AnimationSequence = () => {
                 aria-label="Share"
               >
                 <Share2 className="w-4 h-4" />
-              </button>
+              </motion.button>
 
               {/* Recipient avatar — centered, hero of the receipt */}
               <div className="flex justify-center mb-3">
@@ -444,8 +490,9 @@ export const AnimationSequence = () => {
                     <>{senderName}<span style={{ color: `${BRAND_BLUE}99` }}>.qf</span></>
                   ) : 'you'}
                 </span>
-                <span className="font-mono text-xs" style={{ color: `${BURN_CRIMSON}99` }}>
-                  🔥 {formatQF(burnAmountWei)} QF burned
+                <span className="font-mono text-xs inline-flex items-center gap-1" style={{ color: `${BURN_CRIMSON}99` }}>
+                  <Flame className="w-3 h-3" style={{ color: BURN_CRIMSON }} />
+                  {formatQF(burnAmountWei)} QF burned
                 </span>
               </div>
 
@@ -455,29 +502,70 @@ export const AnimationSequence = () => {
               </p>
             </motion.div>
 
-            {/* Action buttons */}
+            {/* Action buttons — round icon buttons side by side */}
             <motion.div
-              className="flex flex-col items-center gap-3"
+              className="flex items-start gap-8"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.4, ease: EASE_OUT_EXPO as any }}
+              transition={{ delay: 0.4, duration: 0.4, ease: EASE_OUT_EXPO as any }}
             >
-              <ShimmerButton onClick={reset}>Send again</ShimmerButton>
-              <button
-                className="font-satoshi text-sm focus-ring"
-                style={{ color: 'rgba(255,255,255,0.50)' }}
-                onClick={reset}
+              {/* Send again */}
+              <motion.button
+                className="flex flex-col items-center gap-2 select-none"
+                whileTap={{ scale: 0.92 }}
+                onClick={() => {
+                  hapticLight();
+                  reset();
+                }}
               >
-                Done
-              </button>
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: ACTION_BUTTON_SIZE,
+                    height: ACTION_BUTTON_SIZE,
+                    borderRadius: '50%',
+                    background: BRAND_BLUE,
+                  }}
+                >
+                  <Send className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-satoshi text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Send again
+                </span>
+              </motion.button>
+
+              {/* Disconnect */}
+              <motion.button
+                className="flex flex-col items-center gap-2 select-none"
+                whileTap={{ scale: 0.92 }}
+                onClick={() => {
+                  hapticLight();
+                  disconnect();
+                }}
+              >
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: ACTION_BUTTON_SIZE,
+                    height: ACTION_BUTTON_SIZE,
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.95)',
+                  }}
+                >
+                  <PowerOff className="w-5 h-5" style={{ color: BURN_CRIMSON }} />
+                </div>
+                <span className="font-satoshi text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Disconnect
+                </span>
+              </motion.button>
             </motion.div>
 
             {/* On-chain confirmation status */}
             <motion.div
-              className="mt-6 flex items-center gap-2"
+              className="mt-5 flex items-center gap-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.8, duration: 0.5 }}
+              transition={{ delay: 0.7, duration: 0.5 }}
             >
               {confirmed === true ? (
                 <>
